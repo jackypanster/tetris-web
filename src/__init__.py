@@ -1,0 +1,1 @@
+"""Tetris Web Highscore API package."""
