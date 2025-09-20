@@ -8,28 +8,26 @@ BACKEND_APP ?= src.main:app
 
 plan:
 	@echo "==> Running plan with Codex..."
-	codex exec \
-      --model 'gpt-5-codex' \
-      --full-auto \
-      -C . \
+	codex exec --full-auto --cd . \
+      --model gpt-5-codex \
       -c model_reasoning_summary_format=experimental \
-      -c model_reasoning_effort="high" \
+      -c model_reasoning_effort=high \
       "生成/更新 docs/PRD.md、docs/ARCH.md、docs/openapi.yaml、docs/TASKS.md；若文件已存在，请先输出差异到 reports/plan_diff.md 再覆盖。"
 
 
 skeleton:
 	@echo "==> Generating full-stack skeleton with Claude..."
-	claude exec --allowed-tools "*" --dangerously-skip-permissions --verbose --print \
+	claude --permission-mode acceptEdits --verbose --allowed-tools "*" --print \
 	  "根據 docs/PRD.md 與 docs/ARCH.md，補齊 web/ 前端與 src/ 後端骨架；同步遵循 docs/openapi.yaml 契約，不越界目錄；若缺 README/配置一併補齊"
 
 tests:
 	@echo "==> Generating test scaffolds with Gemini..."
-	gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash --debug \
+	gemini --approval-mode yolo -m gemini-2.5-pro --debug \
 	  "依據 docs/TESTPLAN.md 與 docs/openapi.yaml 生成 tests/ 與測試數據；前端無對應模塊時可留 TODO，但仍需標註 CONTRACT 條款"
 
 impl:
 	@echo "==> Running implementation/refinement with Claude..."
-	claude --allowed-tools Edit --allowed-tools Bash --permission-mode default --verbose --print \
+	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
 	  "依據 docs/TASKS.md 已就緒節點補齊 web/ 與 src/ 實作；必要時補測試並更新文檔；若需改 CONTRACT 先起草 ADR"
 
 review:
@@ -43,7 +41,7 @@ gate:
 
 docs:
 	@echo "==> Generating docs with Gemini..."
-	gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash --debug \
+	gemini --approval-mode yolo -m gemini-2.5-pro --debug \
 	  "從 CONTRACT 與代碼註釋派生 docs/api.md + Quickstart；保留 <!-- MANUAL --> 區塊"
 
 accept:
