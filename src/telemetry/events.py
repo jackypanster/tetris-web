@@ -1,10 +1,9 @@
 """Telemetry event collection and batching."""
 
-import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

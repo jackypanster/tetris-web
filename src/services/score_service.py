@@ -1,15 +1,17 @@
 """Score business logic service."""
 
-import uuid
 from datetime import datetime
 from typing import List, Optional
-from ..models import Score, ScoreInput, ScoreBatchInput, ScoreBatchResult, ScoreRejection
+
+import uuid
+
+from ..models import Score, ScoreBatchInput, ScoreBatchResult, ScoreInput, ScoreRejection
 
 
 class ScoreService:
     """Service for managing score operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # In-memory storage for now
         self._scores: List[Score] = []
 
@@ -42,7 +44,7 @@ class ScoreService:
 
     async def create_score(self, score_input: ScoreInput) -> Score:
         """Create a new score entry."""
-        score = Score(
+        score = Score.model_construct(
             id=str(uuid.uuid4()),
             nickname=score_input.nickname,
             points=score_input.points,
@@ -84,7 +86,7 @@ class ScoreService:
                 score = await self.create_score(score_input)
                 accepted.append(score)
 
-            except Exception as e:
+            except Exception:
                 rejected.append(ScoreRejection(
                     reason="PROCESSING_ERROR",
                     payload=score_input

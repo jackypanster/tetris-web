@@ -2,11 +2,16 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Query, status
-from fastapi.responses import JSONResponse
+
 from ..models import (
-    Score, ScoreInput, ScoreWindow, ScoreBatchInput, ScoreBatchResult,
-    RetentionPolicy, ErrorResponse
+    RetentionPolicy,
+    Score,
+    ScoreBatchInput,
+    ScoreBatchResult,
+    ScoreInput,
+    ScoreWindow,
 )
 from ..services.score_service import ScoreService
 
@@ -19,7 +24,7 @@ async def list_scores(
     limit: int = Query(default=10, ge=1, le=100, description="Maximum number of records to return"),
     cursor: Optional[str] = Query(None, description="Pagination cursor from a previous response"),
     since: Optional[datetime] = Query(None, description="Return scores created at or after this timestamp")
-):
+) -> ScoreWindow:
     """List leaderboard scores.
 
     Return the most recent high score entries ordered by points descending
@@ -30,23 +35,23 @@ async def list_scores(
         scores = await score_service.get_top_scores(limit=limit, cursor=cursor, since=since)
 
         # Default retention policy
-        retention = RetentionPolicy(days=14, max_records=100)
+        retention = RetentionPolicy.model_construct(days=14, max_records=100)
 
-        return ScoreWindow(
+        return ScoreWindow.model_construct(
             generated_at=datetime.utcnow(),
             retention=retention,
             next_cursor=None,  # Simplified - would implement proper cursor logic
             items=scores
         )
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve scores"
-        )
+        ) from exc
 
 
 @router.post("", response_model=Score, status_code=status.HTTP_201_CREATED)
-async def submit_score(score_input: ScoreInput):
+async def submit_score(score_input: ScoreInput) -> Score:
     """Submit a single score.
 
     Store a new score for a nickname. Clients should deduplicate submissions
@@ -56,20 +61,20 @@ async def submit_score(score_input: ScoreInput):
     try:
         score = await score_service.create_score(score_input)
         return score
-    except ValueError as e:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
+            detail=str(exc)
+        ) from exc
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to submit score"
-        )
+        ) from exc
 
 
 @router.post("/bulk", response_model=ScoreBatchResult, status_code=status.HTTP_207_MULTI_STATUS)
-async def submit_scores_bulk(batch_input: ScoreBatchInput):
+async def submit_scores_bulk(batch_input: ScoreBatchInput) -> ScoreBatchResult:
     """Submit multiple scores.
 
     Upload up to 50 queued scores in one request. Each item is validated
@@ -86,8 +91,8 @@ async def submit_scores_bulk(batch_input: ScoreBatchInput):
         return result
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process bulk submission"
-        )
+        ) from exc

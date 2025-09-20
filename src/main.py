@@ -4,6 +4,7 @@ FastAPI service that stores short-lived Tetris high scores.
 """
 
 from fastapi import FastAPI
+
 from .routers import scores
 
 app = FastAPI(
