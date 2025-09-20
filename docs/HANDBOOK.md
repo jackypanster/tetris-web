@@ -77,27 +77,20 @@ graph TD
 ---
 
 ## 5. ARCH.md（架構說明）
-**前端模塊**：
-- `core/`：
-  - `Board`（10×20 棋盤 + 消行演算法）
-  - `Piece`（方塊形狀/旋轉/SRS 踢牆）
-  - `RNG`（Bag-7 隨機）
-  - `Scoring`（計分/連擊/B2B）
-  - `Game`（狀態機：Spawn/Active/Lock/Clear/Over）
-- `input/`：鍵盤事件去抖與連發處理（DAS/ARR 可選）。
-- `render/`：Canvas 渲染器（方塊皮膚 + 幀率監控）。
-- `net/`：高分榜 API 客戶端（可替換）。
-- `ui/`：開始/暫停/重新開始/排行榜視圖。
+**前端模塊（web/src）**：
+- `core/`：`Board`、`Piece`、`RNG`、`Scoring`、`Game` 等核心邏輯。
+- `input/`：鍵盤事件去抖與 DAS/ARR，保留擴充控制器的接口。
+- `render/`：Canvas 渲染、FPS 監控與 Ghost Piece 投影。
+- `net/`：依 `docs/openapi.yaml` 生成型別並容錯 API 失敗/節流。
+- `ui/`：視圖與組件層，負責開始/暫停/排行榜等互動。
 
-**後端模塊（可關閉）**：
-- `api/`（FastAPI/uv）：
-  - `app/main.py` 暴露 `app = FastAPI(...)`；本地以 `uv run fastapi dev --reload` 啟動，部署時使用 `uv run fastapi run`（封裝 uvicorn）。
-  - POST `/scores` 新增分數
-  - GET `/scores` 查詢排行
-  - 速率限制、輸入校驗與 CORS 設定集中於 `api/deps.py` 或對應中介層；依賴透過 `pyproject.toml` + `uv.lock` 管理。
+**後端模塊（src/）**：
+- `main.py`：建立 `FastAPI` 應用，支援 `uv run fastapi dev src/main.py --reload` 與 `uv run fastapi run src.main:app`。
+- `routers/scores.py`：路由與輸入驗證。
+- `services/score_service.py`：業務邏輯層，可替換為資料庫實作。
+- `models.py`：Pydantic 模型，與 `docs/openapi.yaml` 同步。
 
-**邊界與契約**：
-- 唯一事實源：`docs/openapi.yaml`（見下一節）；前端 `net/` 自動從契約生成型別與客戶端（可用 openapi-typescript）。
+**工具鏈**：`Makefile` 提供計畫、骨架、測試、實作、審查、文檔、驗收與前後端開發指令；`tools/gate.sh` 執行 uv + pnpm 的條件式 gate。
 
 ---
 
