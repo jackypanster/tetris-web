@@ -15,7 +15,7 @@
 - `make frontend-init`: 若 `web/package.json` 不存在，利用 Vite 初始化前端骨架。
 - `make skeleton`: 讓 Claude 同步生出 `web/` 與 `src/` 的骨架，遵循 PRD/ARCH。
 - `make tests`: Gemini 產生 Pytest + 前端測試草案（前端缺模塊可留 TODO）。
-- `make impl`: 先檢視 `reports/review_codex.md` 與 `make gate` 失敗輸出，逐項修復後再依 `docs/TASKS.md` 實作；`make review` / `make accept` 會產出 QA 與驗收報告。
+- `make impl`: 先檢視 `reports/review_codex.md` 與 `make gate` 失敗輸出，逐項修復後再參考 `docs/TASKS.md`、`docs/ARCH.md`、`docs/PRD.md`、`docs/openapi.yaml` 實作；若需要修改契約，請在 docs/ 目錄加 ADR；`make review` / `make accept` 會產出 QA 與驗收報告。
 - `make gate`: 執行 `tools/gate.sh`（uv + pnpm 條件式檢查）；`make all` 串完整流程。
 - `backend-dev`: `uv run fastapi dev src/main.py --reload`；`frontend-dev`: 進入 `web/` 後 `pnpm run dev`。
 
