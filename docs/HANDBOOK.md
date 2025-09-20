@@ -194,7 +194,7 @@ components:
 
 ## 9. Makefile（或 Justfile）
 核心目標與行為：
-- `plan`：呼叫 `codex --full-auto --cd .`，再生 PRD/ARCH/openapi/TASKS。
+- `plan`：先彙整 `docs/HANDBOOK.md` 等輸入，呼叫 `codex --full-auto --cd .` 生成 `reports/plan_diff.md` 差異摘要，再據以更新 PRD/ARCH/openapi/TASKS。
 - `frontend-init`：若無 `web/package.json`，透過 Vite 初始前端骨架（pnpm 或 npm create）。
 - `skeleton`：`claude --allowed-tools Edit --allowed-tools Bash`，同時補齊 `web/` 前端與 `src/` 後端骨架。
 - `tests`：`gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash`，生成 Pytest 與前端測試草案；若前端未就緒允許 TODO 標註。
@@ -331,7 +331,7 @@ fi
    echo "node_modules\n.dist\n.cache" > .gitignore
    ```
 2. **落地本手冊**：把本 markdown 存為 `docs/HANDBOOK.md`，提交一次。
-3. **`make plan`**：由 Codex 生成/補齊 `docs/PRD.md / ARCH.md / openapi.yaml / TASKS.md`（初稿可直接沿用本手冊片段）。
+3. **`make plan`**：由 Codex 參考 `docs/HANDBOOK.md` 等輸入生成 `reports/plan_diff.md` 差異摘要，再更新 `docs/PRD.md / ARCH.md / openapi.yaml / TASKS.md`。
 4. **`make skeleton`**：讓 Claude 生成 `src/` 骨架與最小可跑入口（Vite + TS）；如需，先行：
    ```bash
    pnpm create vite@latest . -- --template vanilla-ts || npm create vite@latest . -- --template vanilla-ts
@@ -358,4 +358,3 @@ fi
 - **E2E 測試**：後續可引入 Playwright 錄製核心操作序列；測 FPS 可在開發模式注入計時器。
 - **觀測**：開發模式輸出簡單統計（平均幀耗時/最大連擊），避免上線收集個資。
 - **替換模型**：本套路與模型無耦合，只要 CLI 兼容即可；建議將提示詞與配置獨立版本管理。
-

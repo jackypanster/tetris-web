@@ -11,7 +11,7 @@
 - `Makefile`: orchestrates the pipeline; prefer targets over ad-hoc commands.
 
 ## Build, Test, and Development Commands
-- `make plan`: refresh PRD/ARCH/openapi docs via Codex.
+- `make plan`: 彙整 `docs/HANDBOOK.md` 等輸入，產出 `reports/plan_diff.md` 與新版 PRD/ARCH/openapi/TASKS。
 - `make frontend-init`: 若 `web/package.json` 不存在，利用 Vite 初始化前端骨架。
 - `make skeleton`: 讓 Claude 同步生出 `web/` 與 `src/` 的骨架，遵循 PRD/ARCH。
 - `make tests`: Gemini 產生 Pytest + 前端測試草案（前端缺模塊可留 TODO）。
