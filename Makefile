@@ -28,7 +28,7 @@ tests:
 impl:
 	@echo "==> Running implementation/refinement with Claude..."
 	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
-	  "依據 docs/TASKS.md 已就緒節點補齊 web/ 與 src/ 實作；必要時補測試並更新文檔；若需改 CONTRACT 先起草 ADR"
+	  "先檢視 reports/review_codex.md 與 make gate 的失敗輸出，逐項修正；再依 docs/TASKS.md 就緒節點補齊 web/ 與 src/ 實作，必要時補測試並 更新文檔；若需改 CONTRACT 先起草 ADR"
 
 review:
 	@echo "==> Running review with Codex..."

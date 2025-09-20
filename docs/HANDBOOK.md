@@ -198,6 +198,7 @@ components:
 - `frontend-init`：若無 `web/package.json`，透過 Vite 初始前端骨架（pnpm 或 npm create）。
 - `skeleton`：`claude --allowed-tools Edit --allowed-tools Bash`，同時補齊 `web/` 前端與 `src/` 後端骨架。
 - `tests`：`gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash`，生成 Pytest 與前端測試草案；若前端未就緒允許 TODO 標註。
+- `impl`：在修改前先檢視 `reports/review_codex.md` 與 `make gate` 的失敗輸出，逐項修復，再依 `docs/TASKS.md` 已就緒節點補齊 web/src 實作，必要時補測試與文檔。
 - `impl`：Claude 依 `docs/TASKS.md` 已就緒節點實作或重構，前後端一併處理。
 - `review` / `docs` / `accept`：Codex、Gemini 分別產出審查、API 文檔、驗收報告，統一透過 `--cd .` 並輸出狀態訊息。
 - `gate`：委派至 `tools/gate.sh` 執行 uv + pnpm 的 lint/type/test 流程。
