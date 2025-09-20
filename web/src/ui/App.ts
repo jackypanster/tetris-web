@@ -7,7 +7,8 @@ import { CanvasRenderer } from '../render/canvas_renderer';
 import { HUD } from '../render/hud';
 import { KeyboardInput } from '../input/keyboard';
 import { ScoreClient } from '../net/score-client';
-import { GameStore } from '../state/store';
+import { OfflineScoreQueue } from '../net/offline-queue';
+import { AppStore } from '../state/store';
 import { persistence } from '../state/persist';
 
 export class TetrisApp {
@@ -16,7 +17,8 @@ export class TetrisApp {
   private hud: HUD;
   private input: KeyboardInput;
   private scoreClient: ScoreClient;
-  private store: GameStore;
+  private offlineQueue: OfflineScoreQueue;
+  private store: AppStore;
   private canvas: HTMLCanvasElement;
   private animationFrameId: number | null = null;
   private lastTimestamp = 0;
@@ -25,12 +27,13 @@ export class TetrisApp {
     this.canvas = canvasElement;
 
     // Initialize core systems
-    this.store = new GameStore();
+    this.store = new AppStore();
     this.gameEngine = new GameEngine();
     this.renderer = new CanvasRenderer(canvasElement);
     this.hud = new HUD();
     this.input = new KeyboardInput();
     this.scoreClient = new ScoreClient();
+    this.offlineQueue = new OfflineScoreQueue(this.scoreClient);
 
     this.setupEventListeners();
     this.loadSettings();
@@ -39,7 +42,7 @@ export class TetrisApp {
   private setupEventListeners(): void {
     // Game state changes
     this.gameEngine.onStateChange((state) => {
-      this.store.updateGameState(state);
+      this.store.updateGameSnapshot(state);
 
       if (state.status === 'game_over') {
         this.handleGameOver();
@@ -52,8 +55,8 @@ export class TetrisApp {
     });
 
     // Settings changes
-    this.store.onSettingsChange((settings) => {
-      this.input.updateSettings(settings);
+    this.store.getState$().subscribe((appState) => {
+      this.input.updateSettings(appState.settings);
       this.saveSettings();
     });
 
@@ -95,7 +98,7 @@ export class TetrisApp {
   private async handleGameOver(): Promise<void> {
     const gameState = this.gameEngine.getState();
     const score = {
-      nickname: this.store.getPlayerName() || 'Anonymous',
+      nickname: this.store.getSettings().playerName || 'Anonymous',
       points: gameState.score,
       lines: gameState.lines,
       levelReached: gameState.level,
@@ -104,41 +107,38 @@ export class TetrisApp {
     };
 
     try {
-      await this.scoreClient.submitScore(score);
-      console.log('Score submitted successfully');
+      const scoreId = await this.offlineQueue.enqueueScore(score);
+      console.log('Score queued with ID:', scoreId);
     } catch (error) {
-      console.warn('Failed to submit score, queuing for later:', error);
-      await this.queueOfflineScore(score);
-    }
-  }
-
-  private async queueOfflineScore(score: any): Promise<void> {
-    try {
-      const offlineScores = await persistence.get('offlineScores') || [];
-      offlineScores.push({ ...score, queuedAt: new Date().toISOString() });
-      await persistence.set('offlineScores', offlineScores);
-    } catch (error) {
-      console.error('Failed to queue offline score:', error);
+      console.error('Failed to queue score:', error);
     }
   }
 
   public async syncOfflineScores(): Promise<void> {
     try {
-      const offlineScores = await persistence.get('offlineScores') || [];
-      if (offlineScores.length === 0) return;
-
-      const result = await this.scoreClient.submitScoresBulk(offlineScores);
-
-      // Remove successfully submitted scores
-      const remainingScores = offlineScores.filter((_, index) =>
-        !result.accepted.some(accepted => accepted.id === offlineScores[index].id)
-      );
-
-      await persistence.set('offlineScores', remainingScores);
-      console.log(`Synced ${result.accepted.length} offline scores`);
+      const result = await this.offlineQueue.syncScores();
+      console.log(`Sync completed: ${result.processed} processed, ${result.failed} failed`);
+      return result;
     } catch (error) {
       console.warn('Failed to sync offline scores:', error);
+      throw error;
     }
+  }
+
+  public getOfflineQueueStats() {
+    return this.offlineQueue.getStats();
+  }
+
+  public clearFailedScores(): number {
+    return this.offlineQueue.clearFailedScores();
+  }
+
+  public get isOnline(): boolean {
+    return this.offlineQueue.isConnected;
+  }
+
+  public get isSyncing(): boolean {
+    return this.offlineQueue.isSyncing;
   }
 
   public start(): void {

@@ -11,6 +11,7 @@ export interface AppSettings {
   keyboard: KeyboardConfig;
   render: RenderConfig;
   game: GameConfig;
+  playerName: string;
   sound: {
     masterVolume: number;
     sfxVolume: number;
@@ -119,6 +120,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     softDropMultiplier: 20,
     enable180Rotation: false,
   },
+  playerName: 'Anonymous',
   sound: {
     masterVolume: 0.7,
     sfxVolume: 0.8,

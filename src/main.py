@@ -8,10 +8,10 @@ from .routers import scores
 
 app = FastAPI(
     title="Tetris Web Highscore API",
-    version="0.1.0",
-    description="FastAPI service that stores short-lived Tetris high scores. "
-                "Clients may run offline and resynchronise; rate limiting and "
-                "input validation protect the shared leaderboard."
+    version="0.3.0",
+    description="Offline-first leaderboard service for the Tetris Web project. "
+                "Clients queue submissions locally and resync when connectivity returns. "
+                "Rate limiting and validation protect shared resources."
 )
 
 app.include_router(scores.router, prefix="/scores", tags=["Scores"])
