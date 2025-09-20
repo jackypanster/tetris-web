@@ -9,7 +9,7 @@ skeleton:
 	  "根據 docs/openapi.yaml 生成 src/ 最小骨架與接口桩，不越界目錄；若缺 README/配置一併補齊"
 
 tests:
-	gemini --approval-mode auto_edit -C . \
+	gemini --approval-mode auto_edit \
 	  "依據 docs/TESTPLAN.md 與 CONTRACT，生成 tests/ 與測試數據；每條測試標註 CONTRACT 條款"
 
 impl:
