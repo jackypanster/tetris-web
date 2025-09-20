@@ -119,3 +119,39 @@ def test_list_scores_invalid_limit_parameter():
     """
     response = client.get("/scores?limit=200")
     assert response.status_code == 422
+
+def test_submit_score_banned_nickname(monkeypatch):
+    """
+    CONTRACT: openapi.yaml#/paths/~1scores/post@400
+    GIVEN a nickname is on a banned list
+    WHEN a score is submitted with that nickname
+    THEN it should return a 400 Bad Request status.
+    """
+    # Mock the service layer's banned list
+    monkeypatch.setattr(scores.score_service, "BANNED_NICKNAMES", {"BannedUser"})
+    response = client.post("/scores", json={
+        "nickname": "BannedUser",
+        "points": 9999
+    })
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"]["code"] == "nickname_banned"
+
+def test_submit_score_rate_limited(monkeypatch):
+    """
+    CONTRACT: openapi.yaml#/paths/~1scores/post@429
+    GIVEN the rate limiter is active and has been exceeded
+    WHEN a score is submitted
+    THEN it should return a 429 Too Many Requests status.
+    """
+    # Mock the token bucket to simulate an empty bucket
+    async def mock_is_allowed(identifier: str):
+        return False
+    monkeypatch.setattr(scores, "is_allowed", mock_is_allowed)
+
+    response = client.post("/scores", json={
+        "nickname": "PlayerFast",
+        "points": 500
+    })
+    assert response.status_code == 429
+    assert "Retry-After" in response.headers
