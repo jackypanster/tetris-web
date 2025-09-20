@@ -8,12 +8,18 @@ BACKEND_APP ?= src.main:app
 
 plan:
 	@echo "==> Running plan with Codex..."
-	codex --full-auto --cd . \
-	  "生成/更新 docs/PRD.md, docs/ARCH.md, docs/openapi.yaml, docs/TASKS.md"
+	codex exec \
+      --model 'gpt-5-codex' \
+      --full-auto \
+      -C . \
+      -c model_reasoning_summary_format=experimental \
+      -c model_reasoning_effort="high" \
+      "生成/更新 docs/PRD.md、docs/ARCH.md、docs/openapi.yaml、docs/TASKS.md；若文件已存在，请先输出差异到 reports/plan_diff.md 再覆盖。"
+
 
 skeleton:
 	@echo "==> Generating full-stack skeleton with Claude..."
-	claude --allowed-tools Edit --allowed-tools Bash --permission-mode acceptEdits --verbose --print \
+	claude exec --allowed-tools "*" --dangerously-skip-permissions --verbose --print \
 	  "根據 docs/PRD.md 與 docs/ARCH.md，補齊 web/ 前端與 src/ 後端骨架；同步遵循 docs/openapi.yaml 契約，不越界目錄；若缺 README/配置一併補齊"
 
 tests:

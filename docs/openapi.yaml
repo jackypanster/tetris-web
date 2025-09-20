@@ -1,26 +1,31 @@
 openapi: 3.0.3
 info:
   title: Tetris Web Highscore API
-  version: 0.1.0
+  version: 0.3.0
   description: >-
-    FastAPI service that stores short-lived Tetris high scores. Clients may run
-    offline and resynchronise; rate limiting and input validation protect the
-    shared leaderboard.
+    Offline-first leaderboard service for the Tetris Web project. Clients queue
+    submissions locally and resync when connectivity returns. Rate limiting and
+    validation protect shared resources. This document is the single source of
+    truth for the backend contract.
 servers:
   - url: https://api.example.com
     description: Placeholder production endpoint
   - url: http://localhost:8000
-    description: Local development via `uv run fastapi dev --reload`
+    description: Local development (`uv run fastapi dev src/main.py --reload`)
 tags:
   - name: Scores
-    description: Submit and query high score entries
+    description: Submit and query leaderboard entries
 paths:
   /scores:
     get:
       tags: [Scores]
-      summary: List top scores
-      description: Return the most recent high score entries ordered by points
-        descending then createdAt descending.
+      summary: List leaderboard scores
+      operationId: listScores
+      description: >-
+        Return the most recent high score entries ordered by points descending
+        then creation time descending. Supports cursor-based pagination and
+        optional freshness filters. Results are capped by the requested limit or
+        the server-side retention policy (default 14 days / Top-100).
       parameters:
         - in: query
           name: limit
@@ -30,20 +35,48 @@ paths:
             maximum: 100
             default: 10
           description: Maximum number of records to return.
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: Pagination cursor from a previous response.
+        - in: query
+          name: since
+          schema:
+            type: string
+            format: date-time
+          description: Return scores created at or after this timestamp.
       responses:
         '200':
           description: A window of leaderboard entries.
+          headers:
+            X-RateLimit-Limit:
+              schema: { type: integer }
+              description: Maximum allowed requests per minute.
+            X-RateLimit-Remaining:
+              schema: { type: integer }
+              description: Remaining requests in the current window.
+            X-RateLimit-Reset:
+              schema: { type: integer }
+              description: Unix epoch seconds until the window resets.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScoreList'
+                $ref: '#/components/schemas/ScoreWindow'
         '429':
-          description: Too many requests; caller should back off.
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
       tags: [Scores]
-      summary: Submit a score
-      description: Store a new score for a nickname; duplicate submissions should
-        be handled client-side.
+      summary: Submit a single score
+      operationId: submitScore
+      description: >-
+        Store a new score for a nickname. Clients should deduplicate submissions
+        locally. The server may flag suspicious records and omit them from
+        ranking.
       requestBody:
         required: true
         content:
@@ -53,30 +86,110 @@ paths:
       responses:
         '201':
           description: Score accepted and stored.
+          headers:
+            Retry-After:
+              schema: { type: integer }
+              description: Seconds until another submission is allowed (set when throttled).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Score'
+        '207':
+          description: Score stored but flagged for review (suspect).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Score'
         '400':
-          description: Invalid payload (nickname, points, or client metadata).
+          description: Business rule violated (e.g., nickname banned, invalid timing).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '429':
-          description: Too many requests; caller should back off.
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /scores/bulk:
+    post:
+      tags: [Scores]
+      summary: Submit multiple scores
+      operationId: submitScoresBulk
+      description: >-
+        Upload up to 50 queued scores in one request. Each item is validated
+        independently; the response details successes and failures.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreBatchInput'
+      responses:
+        '207':
+          description: Partial success with per-item status.
+          headers:
+            Retry-After:
+              schema: { type: integer }
+              description: Seconds until the queue may retry (set when throttled).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreBatchResult'
+        '413':
+          description: Payload too large or item count exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 components:
   schemas:
-    ScoreList:
+    ScoreWindow:
       type: object
-      required: [items, generatedAt]
+      required: [generatedAt, items, retention]
       properties:
         generatedAt:
           type: string
           format: date-time
+          description: Timestamp when the snapshot was generated.
+        retention:
+          type: object
+          required: [days, maxRecords]
+          properties:
+            days:
+              type: integer
+              minimum: 1
+              description: Days of history the server keeps.
+            maxRecords:
+              type: integer
+              minimum: 1
+              description: Maximum number of records kept for the window.
+        nextCursor:
+          type: string
+          nullable: true
+          description: Cursor to request the next page; null when no more data.
         items:
           type: array
+          description: Ordered list of scores.
           items:
             $ref: '#/components/schemas/Score'
     Score:
       type: object
-      required: [id, nickname, points, createdAt, client]
+      required:
+        - id
+        - nickname
+        - points
+        - createdAt
+        - durationSeconds
+        - lines
+        - levelReached
       properties:
         id:
           type: string
@@ -85,14 +198,43 @@ components:
           type: string
           minLength: 1
           maxLength: 16
+          description: Display name submitted by the player.
         points:
           type: integer
           minimum: 0
+          description: Final score achieved at game over.
+        lines:
+          type: integer
+          minimum: 0
+          description: Lines cleared in the run.
+        levelReached:
+          type: integer
+          minimum: 0
+          description: Last level reached during the run.
+        durationSeconds:
+          type: integer
+          minimum: 0
+          description: Total run duration in seconds.
+        seed:
+          type: string
+          nullable: true
+          description: Optional seed used by the Bag RNG.
         createdAt:
           type: string
           format: date-time
+          description: Time when the server accepted the score.
+        suspect:
+          type: boolean
+          default: false
+          description: Flag indicating the score is withheld from ranking pending review.
         client:
           $ref: '#/components/schemas/ClientInfo'
+        tags:
+          type: array
+          items:
+            type: string
+          description: Optional metadata labels provided by the client.
+      additionalProperties: false
     ScoreInput:
       type: object
       required: [nickname, points]
@@ -101,20 +243,154 @@ components:
           type: string
           minLength: 1
           maxLength: 16
+          description: Display name to associate with the score.
         points:
           type: integer
           minimum: 0
+          description: Total points acquired during gameplay.
+        lines:
+          type: integer
+          minimum: 0
+          description: Lines cleared in the run.
+        levelReached:
+          type: integer
+          minimum: 0
+          description: Last level reached during the run.
+        durationSeconds:
+          type: integer
+          minimum: 0
+          description: Run duration in seconds.
+        seed:
+          type: string
+          description: Optional seed used by the client.
+        tags:
+          type: array
+          minItems: 0
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 24
+          description: Optional metadata labels (e.g., "daily-challenge").
         client:
           $ref: '#/components/schemas/ClientInfo'
+      additionalProperties: false
+    ScoreBatchInput:
+      type: object
+      required: [items]
+      properties:
+        clientTime:
+          type: string
+          format: date-time
+          description: Timestamp when the batch was generated on the client.
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ScoreInput'
+          description: Scores queued locally awaiting upload.
+      additionalProperties: false
+    ScoreBatchResult:
+      type: object
+      required: [accepted, rejected]
+      properties:
+        accepted:
+          type: array
+          description: Scores that were stored successfully.
+          items:
+            $ref: '#/components/schemas/Score'
+        rejected:
+          type: array
+          description: Scores that failed validation or business rules.
+          items:
+            $ref: '#/components/schemas/ScoreRejection'
+      additionalProperties: false
+    ScoreRejection:
+      type: object
+      required: [reason, payload]
+      properties:
+        reason:
+          type: string
+          description: Error code explaining why the item failed.
+        payload:
+          $ref: '#/components/schemas/ScoreInput'
       additionalProperties: false
     ClientInfo:
       type: object
       properties:
         version:
           type: string
-          description: Short client build identifier.
+          description: Client build identifier (semver or hash).
+        platform:
+          type: string
+          description: Simplified device/platform identifier.
         ua:
           type: string
           maxLength: 128
           description: Normalised user-agent or device info.
       additionalProperties: false
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+        detail:
+          oneOf:
+            - type: string
+            - $ref: '#/components/schemas/ValidationError'
+          description: Message describing the error condition.
+      additionalProperties: false
+    ValidationError:
+      type: object
+      required: [loc, msg, type]
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+          description: Path to the field that caused the error.
+        msg:
+          type: string
+        type:
+          type: string
+      additionalProperties: false
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+  responses:
+    TooManyRequests:
+      description: Too many requests; caller should back off before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds until the rate limit resets.
+        X-RateLimit-Limit:
+          schema: { type: integer }
+        X-RateLimit-Remaining:
+          schema: { type: integer }
+        X-RateLimit-Reset:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected server failure while processing the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Invalid payload or query parameter.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HTTPValidationError'
