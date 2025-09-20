@@ -71,7 +71,7 @@ graph TD
 - **安全/隱私**：高分榜不得存儲個人敏感信息；輸入需基本校驗與速率限制。
 - **可觀測**：最少矩陣：行消次數、平均下落速度、最大連擊、渲染耗時分佈（開發模式）。
 
-**平台與技術**：TypeScript + HTML Canvas（或 WebGL 可選），Vite 構建；Node/Express 作簡易高分榜 API。
+**平台與技術**：TypeScript + HTML Canvas（或 WebGL 可選），Vite 構建；FastAPI + uv 部署高分榜 API。
 
 ---
 
@@ -89,10 +89,11 @@ graph TD
 - `ui/`：開始/暫停/重新開始/排行榜視圖。
 
 **後端模塊（可關閉）**：
-- `api/`（Node/Express）：
+- `api/`（FastAPI/uv）：
+  - `app/main.py` 暴露 `app = FastAPI(...)`；本地以 `uv run fastapi dev --reload` 啟動，部署時使用 `uv run fastapi run`（封裝 uvicorn）。
   - POST `/scores` 新增分數
   - GET `/scores` 查詢排行
-  - 簡易速率限制 + 輸入校驗 + CORS 設定
+  - 速率限制、輸入校驗與 CORS 設定集中於 `api/deps.py` 或對應中介層；依賴透過 `pyproject.toml` + `uv.lock` 管理。
 
 **邊界與契約**：
 - 唯一事實源：`docs/openapi.yaml`（見下一節）；前端 `net/` 自動從契約生成型別與客戶端（可用 openapi-typescript）。
@@ -239,12 +240,16 @@ all: plan skeleton tests impl review gate docs accept
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-# TypeScript/Node 方案（可按語言調整）
-pnpm -v >/dev/null 2>&1 || npm i -g pnpm
-pnpm i
-pnpm lint
-pnpm typecheck
-pnpm test -- --maxWorkers=50% --coverage --coverageBranch --coverageReporters=text-summary --passWithNoTests=false
+# TypeScript 前端 + FastAPI 後端（uv 管理）
+uv sync
+uv run ruff check api
+uv run mypy api
+uv run pytest --maxfail=1 --disable-warnings
+if command -v pnpm >/dev/null; then
+  pnpm install --frozen-lockfile
+  pnpm lint
+  pnpm test -- --maxWorkers=50% --passWithNoTests=false
+fi
 # 可選：semgrep/bandit/license 掃描
 ```
 
