@@ -1,4 +1,6 @@
-.PHONY: plan skeleton tests impl review gate docs accept all \
+.PHONY: plan skeleton tests impl impl-backend impl-frontend \
+        review review-backend review-frontend \
+        gate gate-backend gate-frontend docs accept all \
         backend-install backend-test backend-dev \
         frontend-init frontend-install frontend-build frontend-test frontend-dev setup
 
@@ -28,19 +30,39 @@ tests:
 	gemini --approval-mode yolo -m gemini-2.5-pro --debug \
 	  "依據 docs/TESTPLAN.md 與 docs/openapi.yaml 生成 tests/ 與測試數據；前端無對應模塊時可留 TODO，但仍需標註 CONTRACT 條款"
 
-impl:
-	@echo "==> Running implementation/refinement with Claude..."
+impl: impl-backend impl-frontend
+
+impl-backend:
+	@echo "==> Backend implementation pass..."
 	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
-	  "先檢視 reports/review_codex.md 與 make gate 的失敗輸出，逐項修正；再參考 docs/TASKS.md、docs/ARCH.md、docs/PRD.md 與 docs/openapi.yaml 補齊 web/ 與 src/ 實作，必要時補測試 tests/ 並更新文檔 docs/；若需改 CONTRACT 先在 docs/ 寫 ADR"
+	  "僅針對後端（src/ 與 docs/openapi.yaml）：先檢視 reports/review_backend.md 與 make gate-backend 的失敗輸出，逐項修復；再參考 docs/TASKS.md、docs/ARCH.md、docs/PRD.md、docs/openapi.yaml 實作或重構；必要時補 Pytest 測試與相關文檔；若需調整契約請先於 docs/ 目錄新增 ADR"
 
-review:
-	@echo "==> Running review with Codex..."
+impl-frontend:
+	@echo "==> Frontend implementation pass..."
+	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
+	  "僅針對前端（web/）：先檢視 reports/review_frontend.md 與 make gate-frontend 的失敗輸出，逐項修復；再參考 docs/TASKS.md、docs/ARCH.md、docs/PRD.md 補齊 UI/邏輯與對應測試；必要時更新文檔；若需調整契約請先於 docs/ 目錄新增 ADR"
+
+review: review-backend review-frontend
+
+review-backend:
+	@echo "==> Backend review with Codex..."
 	codex exec --sandbox workspace-write --cd . \
-	  "審查本次變更，輸出 reports/review_codex.md（缺陷清單/風險/修復建議）"
+	  "僅評估本次後端（src/、docs/openapi.yaml、tests/api/ 等）變更，輸出 reports/review_backend.md（缺陷清單/風險/修復建議）"
 
-gate:
-	@echo "==> Running gate checks..."
-	bash tools/gate.sh
+review-frontend:
+	@echo "==> Frontend review with Codex..."
+	codex exec --sandbox workspace-write --cd . \
+	  "僅評估本次前端（web/ 與相關測試）變更，輸出 reports/review_frontend.md（缺陷清單/風險/修復建議）"
+
+gate: gate-backend gate-frontend
+
+gate-backend:
+	@echo "==> Running backend gate checks..."
+	bash tools/gate.sh backend
+
+gate-frontend:
+	@echo "==> Running frontend gate checks..."
+	bash tools/gate.sh frontend
 
 docs:
 	@echo "==> Generating docs with Gemini..."

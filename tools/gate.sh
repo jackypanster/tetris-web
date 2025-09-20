@@ -4,12 +4,21 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 FRONTEND_DIR="${FRONTEND_DIR:-$ROOT_DIR/web}"
 BACKEND_PYPROJECT="$ROOT_DIR/pyproject.toml"
+MODE="${1:-all}"
+
+case "$MODE" in
+  backend|frontend|all) ;;
+  *)
+    echo "Usage: $0 [backend|frontend|all]" >&2
+    exit 1
+    ;;
+esac
 
 step() {
   printf '\n==> %s\n' "$1"
 }
 
-if [ -f "$BACKEND_PYPROJECT" ]; then
+if [[ "$MODE" != "frontend" ]] && [ -f "$BACKEND_PYPROJECT" ]; then
   step "Backend: syncing dependencies (uv)"
   if command -v uv >/dev/null 2>&1; then
     uv sync --extra dev
@@ -30,12 +39,12 @@ if [ -f "$BACKEND_PYPROJECT" ]; then
   else
     echo "   ! 未找到 uv，請先安裝 https://github.com/astral-sh/uv"
   fi
-else
+elif [[ "$MODE" != "frontend" ]]; then
   echo "--> 跳過後端檢查，未找到 pyproject.toml"
 fi
 
 PACKAGE_JSON="$FRONTEND_DIR/package.json"
-if [ -f "$PACKAGE_JSON" ]; then
+if [[ "$MODE" != "backend" ]] && [ -f "$PACKAGE_JSON" ]; then
   step "Frontend: installing deps"
   if command -v pnpm >/dev/null 2>&1; then
     (cd "$FRONTEND_DIR" && pnpm install)
@@ -70,6 +79,6 @@ if [ -f "$PACKAGE_JSON" ]; then
       (cd "$FRONTEND_DIR" && npm run build --if-present)
     fi
   fi
-else
+elif [[ "$MODE" != "backend" ]]; then
   echo "--> 跳過前端檢查，未找到 $PACKAGE_JSON"
 fi

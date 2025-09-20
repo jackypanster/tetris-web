@@ -198,7 +198,9 @@ components:
 - `frontend-init`：若無 `web/package.json`，透過 Vite 初始前端骨架（pnpm 或 npm create）。
 - `skeleton`：`claude --allowed-tools Edit --allowed-tools Bash`，同時補齊 `web/` 前端與 `src/` 後端骨架。
 - `tests`：`gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash`，生成 Pytest 與前端測試草案；若前端未就緒允許 TODO 標註。
-- `impl`：在修改前先檢視 `reports/review_codex.md` 與 `make gate` 的失敗輸出，逐項修復，再參考 `docs/TASKS.md`、`docs/ARCH.md`、`docs/PRD.md`、`docs/openapi.yaml` 補齊 web/src 實作，必要時補測試與文檔；若需調整 CONTRACT，先在 docs/ 目錄撰寫 ADR。
+- `impl`：預設串行 `make impl-backend`、`make impl-frontend`；亦可單獨呼叫子目標聚焦一側。
+- `impl-backend`：先檢視 `reports/review_backend.md` 與 `make gate-backend` 失敗輸出，逐項修復，再依 `docs/TASKS.md`、`docs/ARCH.md`、`docs/PRD.md`、`docs/openapi.yaml` 補齊後端；若需調整 CONTRACT，先在 docs/ 目錄撰寫 ADR。
+- `impl-frontend`：先檢視 `reports/review_frontend.md` 與 `make gate-frontend` 失敗輸出，逐項修復，再依 `docs/TASKS.md`、`docs/ARCH.md`、`docs/PRD.md` 補齊前端與對應測試。
 - `impl`：Claude 依 `docs/TASKS.md` 已就緒節點實作或重構，前後端一併處理。
 - `review` / `docs` / `accept`：Codex、Gemini 分別產出審查、API 文檔、驗收報告，統一透過 `--cd .` 並輸出狀態訊息。
 - `gate`：委派至 `tools/gate.sh` 執行 uv + pnpm 的 lint/type/test 流程。
@@ -337,11 +339,10 @@ fi
    pnpm create vite@latest . -- --template vanilla-ts || npm create vite@latest . -- --template vanilla-ts
    ```
 5. **`make tests`**：讓 Gemini 生成單元測試（旋轉/消行/隨機/計分）與 fixtures。
-6. **`make impl`**：Claude 針對 TASKS 中“就緒”節點實作（例如 `core/Board` + `core/Piece`）。
-7. **`make gate`**：跑 lint/type/test 規則；不過則回到 `impl`。
+6. **後端迴圈**：重複 `make impl-backend → make gate-backend → make review-backend`，直到 lint/type/test 與審查綠燈。
+7. **前端迴圈**：重複 `make impl-frontend → make gate-frontend → make review-frontend`，直到 lint/test 與審查綠燈。
 8. **`make docs`**：Gemini 從契約派生 `docs/api.md` 與 Quickstart。
-9. **`make review`**：Codex 產生審查報告；
-10. **`make accept`**：Codex 產出機器可讀驗收 JSON；若未通過，回到第 6 步。
+9. **`make accept`**：Codex 產出機器可讀驗收 JSON；若未通過，回到第 6 步。
 
 ---
 

@@ -31,8 +31,8 @@ graph TD
 | E | 生成骨架（`make skeleton` → Claude），同步補齊 `web/` 與 `src/` 骨架。 | 文檔 v0.3、`prompts/skeleton` | 初始程式骨架 + TODO | 產出檔案受限於 `web/src`、`src/`；Lint/type 可通過 | 骨架覆蓋手寫程式 | 調整 prompts，使用 git revert 回到前一穩定點 | ⏳ 待依據新契約重跑 |
 | F | 測試草案（`make tests` → Gemini），建立 Pytest/Vitest/Playwright 草案。 | OpenAPI 0.3、TESTPLAN | `tests/` 草案 + TODO | 測試可執行或明確 TODO；契約標註齊全 | 自動測試與程式結構不匹配 | 恢復前版 tests，調整 prompt 後重跑 | ⏳ 待更新 |
 | G | 實作與重構（`make impl` → Claude 或人工）。 | Skeleton、Tests Ready 節點 | 程式變更 + 補測試 | 單元/整合測試綠燈；Review 無阻塞 | LLM 誤改契約；批次提交落地困難 | 使用 feature branch，必要時 revert + 更新 DAG | 🔄 進行中（後端 MVP 已有；需補批次提交、SW） |
-| H | 交叉審查（`make review`）— Codex ↔ Claude。 | G 輸出、測試結果 | `reports/review_codex.md` | 高風險缺陷清零；建議已處理或列 TODO | 審查忽略性能、安全議題 | 回到 G 重實作/補測試，再觸發審查 | ⏳ 未啟動 |
-| I | 工具閘門（`make gate` → `tools/gate.sh`）。 | 代碼倉庫、`uv`/`pnpm` | Lint/type/test/coverage 報告 | 覆蓋率 ≥80%/70%；lint/type 0 錯 | 閘門耗時 / 覆蓋率不足 | 拆批執行、調整測試權重；失敗回到 G | ⏳ 未啟動 |
+| H | 交叉審查（`make review-backend` / `make review-frontend`）— Codex ↔ Claude。 | G 輸出、測試結果 | `reports/review_backend.md`、`reports/review_frontend.md` | 高風險缺陷清零；建議已處理或列 TODO | 審查忽略性能、安全議題 | 回到 G 重實作/補測試，再觸發審查 | ⏳ 未啟動 |
+| I | 工具閘門（`make gate-backend` / `make gate-frontend` → `tools/gate.sh`）。 | 代碼倉庫、`uv`/`pnpm` | Lint/type/test/coverage 報告 | 覆蓋率 ≥80%/70%；lint/type 0 錯 | 閘門耗時 / 覆蓋率不足 | 拆批執行、調整測試權重；失敗回到 G | ⏳ 未啟動 |
 | J | 文檔派生（`make docs` → Gemini），生成 API/開發者文檔。 | 契約、程式註釋、Handbook | API 文檔 + Quickstart | Docs build 成功；手寫區塊保留 | 自動文檔覆蓋手寫內容 | 手動合併或恢復手寫塊再 rerun | ⏳ 未啟動 |
 | K | 驗收（`make accept` → Codex），對照 `docs/Acceptance.md`。 | 測試輸出、Acceptance | `reports/acceptance.json` | 所有 A-001~A-007 Pass | 验收缺少證據 | 回跑 F→I 取得證據後重試 | ⏳ 未啟動 |
 | L | Telemetry / Service Worker 強化：SW 快取策略、離線事件緩存、遙測批次。 | PRD v0.3、ARCH v0.3 | SW + analytics 模組 | Playwright 離線案例通過；遙測隊列覆蓋率達標 | 瀏覽器相容性差異 | 拆成瀏覽器專用策略，保留回退 SW 版本 | 🟡 需求已定，待排程 |
