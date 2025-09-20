@@ -1,6 +1,6 @@
 .PHONY: plan skeleton tests impl review gate docs accept all \
         backend-install backend-test backend-dev \
-        frontend-install frontend-build frontend-test frontend-dev setup
+        frontend-init frontend-install frontend-build frontend-test frontend-dev setup
 
 FRONTEND_DIR ?= web
 BACKEND_MAIN ?= src/main.py
@@ -69,6 +69,20 @@ backend-dev:
 		echo "   ! 未找到 uv，請使用 'uv run fastapi dev $(BACKEND_MAIN) --reload' 或其他方式啟動"; \
 	fi
 
+frontend-init:
+	@echo "==> Initializing frontend scaffold..."
+	@if [ -f $(FRONTEND_DIR)/package.json ]; then \
+		echo "   > 已存在 $(FRONTEND_DIR)/package.json，跳過"; \
+	else \
+		if command -v pnpm >/dev/null 2>&1; then \
+			pnpm create vite@latest $(FRONTEND_DIR) -- --template vanilla-ts; \
+		elif command -v npm >/dev/null 2>&1; then \
+			npm create vite@latest $(FRONTEND_DIR) -- --template vanilla-ts; \
+		else \
+			echo "   ! 未找到 pnpm 或 npm，請先安裝其中之一"; exit 1; \
+		fi; \
+	fi
+
 frontend-install:
 	@echo "==> Installing frontend dependencies..."
 	@if [ -f $(FRONTEND_DIR)/package.json ]; then \
@@ -125,6 +139,6 @@ frontend-dev:
 		echo "   > 跳過，因為未找到 $(FRONTEND_DIR)/package.json"; \
 	fi
 
-setup: backend-install frontend-install
+setup: frontend-init backend-install frontend-install
 
 all: plan skeleton tests impl review gate docs accept
