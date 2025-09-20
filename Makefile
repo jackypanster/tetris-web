@@ -5,7 +5,7 @@ plan:
 	  "生成/更新 docs/PRD.md, docs/ARCH.md, docs/openapi.yaml, docs/TASKS.md"
 
 skeleton:
-	claude --allowed-tools "Edit" --permission-mode acceptEdits -C . \
+	claude --allowed-tools "Edit" --permission-mode acceptEdits --print \
 	  "根據 docs/openapi.yaml 生成 src/ 最小骨架與接口桩，不越界目錄；若缺 README/配置一併補齊"
 
 tests:
