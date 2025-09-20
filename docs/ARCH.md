@@ -7,24 +7,24 @@
 - 工具鏈：`Makefile` 串聯 plan → skeleton → tests → impl → gate → docs → accept；`tools/gate.sh` 執行 lint/type/test。
 
 ## 2. 前端模組劃分
-- `core/`
+- `core/`（web/src/core/）：
   - `Board`：管理 10×20 棋盤、行消與行下沉。
   - `Piece`：方塊定義、旋轉表、牆踢資料。
   - `RNG`：Bag-7 隨機器，提供可測種子。
   - `Scoring`：計分、Back-to-Back、連擊邏輯。
   - `Game`：狀態機 `Spawn → Active → Lock → Clear → Over`，處理暫停/重新開始。
-- `input/`：鍵盤事件去抖，自定 DAS/ARR；保留接口以支援手柄。
-- `render/`：Canvas 渲染器，統計 FPS 與繪製 Ghost Piece。
-- `net/`：高分榜客戶端，依 `openapi.yaml` 生成型別；須容錯後端關閉或節流。
-- `ui/`：開始/暫停/重玩/排行榜視圖；可插槽式主題。
+- `input/`（web/src/input/）：鍵盤事件去抖，自定 DAS/ARR；保留接口以支援手柄。
+- `render/`（web/src/render/）：Canvas 渲染器，統計 FPS 與繪製 Ghost Piece。
+- `net/`（web/src/net/）：高分榜客戶端，依 `openapi.yaml` 生成型別；須容錯後端關閉或節流。
+- `ui/`（web/src/ui/）：開始/暫停/重玩/排行榜視圖；可插槽式主題。
 
 ## 3. 後端模組劃分（可關閉）
-- `api/`
-  - `app/main.py`：建立 `FastAPI` 實例並掛載路由；本地 `uv run fastapi dev --reload` 啟動，部署用 `uv run fastapi run`。
-  - `api/routes/scores.py`：`POST /scores` 與 `GET /scores`，使用 Pydantic 模型對應契約。
-  - `api/deps.py`：依賴注入（DB/儲存）、速率限制與 CORS 設定。
-  - `api/models.py`：資料模型與持久層抽象，可替換為記憶體或資料庫實作。
-- 依賴管理：`pyproject.toml` + `uv.lock`；測試透過 `pytest`、靜態分析使用 `ruff`、`mypy`。
+- `src/`：
+  - `main.py`：建立 `FastAPI` 實例並掛載路由；本地使用 `uv run fastapi dev src/main.py --reload` 啟動，部署採 `uv run fastapi run src.main:app`。
+  - `routers/scores.py`：`POST /scores` 與 `GET /scores`，負責路由與輸入驗證。
+  - `services/score_service.py`：業務邏輯層，抽象儲存行為，可替換為資料庫實作。
+  - `models.py`：Pydantic 模型，與 `docs/openapi.yaml` 保持同步。
+- 依賴管理：`pyproject.toml` + `uv.lock`；測試透過 `pytest`，靜態分析使用 `ruff`、`mypy`。
 
 ## 4. 數據與契約
 - 高分榜請求/回應模型：`ScoreInput` 與 `Score`，欄位詳見 `openapi.yaml`。

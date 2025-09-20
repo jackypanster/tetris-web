@@ -18,8 +18,9 @@
 ├─ docs/              # PRD/ARCH/Acceptance/CONTRACT（本手冊內文即其初稿）
 ├─ prompts/           # 模板化提示詞（plan/impl/docs/accept 等）
 ├─ reports/           # LLM 審核輸出（review/acceptance 等）
-├─ src/               # 源碼（TypeScript + Canvas）
-├─ tests/             # 測試（Vitest/Jest + Playwright 可選）
+├─ web/               # 前端 Vite + TypeScript（遊戲邏輯 / UI / 渲染）
+├─ src/               # 後端 FastAPI（高分榜 API）
+├─ tests/             # 測試（Pytest / Vitest / Playwright 預留）
 ├─ tools/             # gate.sh 等輔助腳本
 └─ Makefile           # 或 Justfile，編排整條鏈路
 ```
@@ -199,58 +200,85 @@ components:
 ---
 
 ## 9. Makefile（或 Justfile）
-```makefile
-.PHONY: plan skeleton tests impl review gate docs accept all
+核心目標與行為：
+- `plan`：呼叫 `codex --full-auto --cd .`，再生 PRD/ARCH/openapi/TASKS。
+- `skeleton`：`claude --allowed-tools Edit --allowed-tools Bash`，同時補齊 `web/` 前端與 `src/` 後端骨架。
+- `tests`：`gemini --approval-mode auto_edit --allowed-tools Edit --allowed-tools Bash`，生成 Pytest 與前端測試草案；若前端未就緒允許 TODO 標註。
+- `impl`：Claude 依 `docs/TASKS.md` 已就緒節點實作或重構，前後端一併處理。
+- `review` / `docs` / `accept`：Codex、Gemini 分別產出審查、API 文檔、驗收報告，統一透過 `--cd .` 並輸出狀態訊息。
+- `gate`：委派至 `tools/gate.sh` 執行 uv + pnpm 的 lint/type/test 流程。
+- `backend-install` / `backend-test` / `backend-dev`：使用 uv `sync`、`pytest`、`fastapi dev` 管理後端生命週期。
+- `frontend-install` / `frontend-build` / `frontend-test` / `frontend-dev`：若 `web/package.json` 存在則以 `pnpm`（或備援 `npm`）執行；缺少前端時自動跳過。
+- `setup`：快捷鍵，依序觸發後端與前端依賴安裝。
+- `all`：串起 plan → skeleton → tests → impl → review → gate → docs → accept 的完整鏈路。
 
-plan:
-	codex --full-auto -C . \
-	  "生成/更新 docs/PRD.md, docs/ARCH.md, docs/openapi.yaml, docs/TASKS.md"
-
-skeleton:
-	claude --allowed-tools "Edit" --permission-mode acceptEdits -C . \
-	  "根據 docs/openapi.yaml 生成 src/ 最小骨架與接口桩，不越界目錄；若缺 README/配置一併補齊"
-
-tests:
-	gemini --approval-mode auto_edit -C . \
-	  "依據 docs/TESTPLAN.md 與 CONTRACT，生成 tests/ 與測試數據；每條測試標註 CONTRACT 條款"
-
-impl:
-	claude --allowed-tools "Edit" --permission-mode default -C . \
-	  "只實作 TASKS.md 已就緒節點，最小提交，必要時補測試；不直接修改 CONTRACT"
-
-review:
-	codex exec --sandbox read-only -C . \
-	  "審查本次變更，輸出 reports/review_codex.md（缺陷清單/風險/修復建議）"
-
-gate:
-	bash tools/gate.sh
-
-docs:
-	gemini --approval-mode auto_edit -C . \
-	  "從 CONTRACT 與代碼註釋派生 docs/api.md + Quickstart；保留 <!-- MANUAL --> 區塊"
-
-accept:
-	codex exec --sandbox read-only -C . \
-	  "對照 Acceptance.md 生成 reports/acceptance.json（機器可讀：id/status/evidence/fix/severity）"
-
-all: plan skeleton tests impl review gate docs accept
-```
-
-**`tools/gate.sh`**（示例）：
+**`tools/gate.sh`**（摘要）：
+- 先檢查 `pyproject.toml`，使用 `uv sync --extra dev` 安裝依賴，再跑 `uv run ruff check src`、`uv run mypy src`、`uv run pytest`。
+- 若 `web/package.json` 存在，則安裝依賴後依序執行 `lint`、`test`、`build`（支援 `pnpm` 或 `npm`）。
+- 所有步驟皆輸出 `==>` 狀態訊息，缺少必要工具時只提醒、不強制退出。
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-# TypeScript 前端 + FastAPI 後端（uv 管理）
-uv sync
-uv run ruff check api
-uv run mypy api
-uv run pytest --maxfail=1 --disable-warnings
-if command -v pnpm >/dev/null; then
-  pnpm install --frozen-lockfile
-  pnpm lint
-  pnpm test -- --maxWorkers=50% --passWithNoTests=false
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+FRONTEND_DIR="${FRONTEND_DIR:-$ROOT_DIR/web}"
+BACKEND_PYPROJECT="$ROOT_DIR/pyproject.toml"
+
+step() {
+  printf '
+==> %s
+' "$1"
+}
+
+if [ -f "$BACKEND_PYPROJECT" ]; then
+  step "Backend: syncing dependencies (uv)"
+  if command -v uv >/dev/null 2>&1; then
+    uv sync --extra dev
+    step "Backend: ruff check"
+    if uv run ruff --version >/dev/null 2>&1; then
+      uv run ruff check src
+    else
+      echo "   ! ruff 未安裝，跳過 lint"
+    fi
+    step "Backend: mypy type check"
+    if uv run mypy --version >/dev/null 2>&1; then
+      uv run mypy src
+    else
+      echo "   ! mypy 未安裝，跳過型別檢查"
+    fi
+    step "Backend: pytest"
+    uv run pytest || { echo "Backend tests failed"; exit 1; }
+  else
+    echo "   ! 未找到 uv，請先安裝 https://github.com/astral-sh/uv"
+  fi
+else
+  echo "--> 跳過後端檢查，未找到 pyproject.toml"
 fi
-# 可選：semgrep/bandit/license 掃描
+
+PACKAGE_JSON="$FRONTEND_DIR/package.json"
+if [ -f "$PACKAGE_JSON" ]; then
+  step "Frontend: installing deps"
+  if command -v pnpm >/dev/null 2>&1; then
+    (cd "$FRONTEND_DIR" && pnpm install)
+    RUN_TOOL="pnpm"
+  elif command -v npm >/dev/null 2>&1; then
+    (cd "$FRONTEND_DIR" && npm install)
+    RUN_TOOL="npm"
+  else
+    echo "   ! 未找到 pnpm 或 npm，跳過前端檢查"
+    RUN_TOOL=""
+  fi
+
+  if [ -n "$RUN_TOOL" ]; then
+    step "Frontend: lint"
+    (cd "$FRONTEND_DIR" && $RUN_TOOL run lint --if-present)
+    step "Frontend: unit tests"
+    (cd "$FRONTEND_DIR" && $RUN_TOOL run test --if-present)
+    step "Frontend: build"
+    (cd "$FRONTEND_DIR" && $RUN_TOOL run build --if-present)
+  fi
+else
+  echo "--> 跳過前端檢查，未找到 $PACKAGE_JSON"
+fi
 ```
 
 ---
@@ -269,7 +297,7 @@ fi
 **`prompts/impl.md`**（節選）
 ```
 你是資深重構工程師。僅針對 TASKS.md 節點 {ID}：
-- 讀 CONTRACT/ARCH，補齊 src/ 骨架，遵循 style 規範
+- 讀 CONTRACT/ARCH，補齊 web/ 與 src/ 骨架，遵循各自 style 規範
 - 如需改 CONTRACT，先輸出 ADR 草案，不直接改碼
 - 每步最小提交，必要時補測試並標註原因
 ```

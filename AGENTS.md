@@ -4,24 +4,25 @@
 - `docs/`: PRD, architecture, acceptance notes, and `openapi.yaml`; treat as single source of truth.
 - `prompts/`: agent prompt templates; tweak before re-running automation.
 - `reports/`: generated reviews/acceptance outputs; leave unedited.
-- `src/` + `tests/`: TypeScript implementation and Vitest/Playwright suites; mirror module paths, e.g., `src/core/Board.ts` with `tests/core/Board.test.ts`.
-- `api/`: FastAPI app managed by `uv`; keep entrypoint at `app/main.py` and shared deps in `pyproject.toml`.
+- `web/`: Vite + TypeScript 前端（game core/render/ui 等）；若不存在則先補骨架。
+- `src/`: FastAPI 後端；入口 `src/main.py`，依賴由 `pyproject.toml` 管理。
+- `tests/`: Pytest（後端）與 Vitest/Playwright 預留位置，檔案需標註 CONTRACT 條款。
 - `tools/`: helper scripts such as the planned `gate.sh`.
 - `Makefile`: orchestrates the pipeline; prefer targets over ad-hoc commands.
 
 ## Build, Test, and Development Commands
 - `make plan`: refresh PRD/ARCH/openapi docs via Codex.
-- `make skeleton`: let Claude generate minimal TypeScript skeleton in `src/`.
-- `make tests`: ask Gemini to draft contract-backed suites in `tests/`.
-- `make impl`: implement ready tasks; `make review` / `make accept` produce QA and acceptance reports.
-- `make gate`: run `tools/gate.sh` (add lint/type/coverage there); `make all` chains the loop.
-- Backend local dev: `uv sync`, then `uv run fastapi dev --reload`; smoke prod via `uv run fastapi run --port 8000`.
+- `make skeleton`: 讓 Claude 同步生出 `web/` 與 `src/` 的骨架，遵循 PRD/ARCH。
+- `make tests`: Gemini 產生 Pytest + 前端測試草案（前端缺模塊可留 TODO）。
+- `make impl`: 實作已就緒節點；`make review` / `make accept` 產出 QA 與驗收報告。
+- `make gate`: 執行 `tools/gate.sh`（uv + pnpm 條件式檢查）；`make all` 串完整流程。
+- `backend-dev`: `uv run fastapi dev src/main.py --reload`；`frontend-dev`: 進入 `web/` 後 `pnpm run dev`。
 
 ## Coding Style & Naming Conventions
-Use TypeScript ES modules with 2-space indentation and semicolons. Name classes/files in PascalCase (`Board.ts`), utilities in kebab-case (`bag-rng.ts`), and align DTOs with `docs/openapi.yaml`. Backend modules stay under `api/`, use snake_case filenames, and annotate FastAPI routes with Pydantic models. Run Prettier/ESLint up front and Ruff/Black/Mypy via `uv run`; note any deliberate deviations in comments.
+Frontend：採 TypeScript ES modules，2 空格縮排與分號，類/檔案 PascalCase（`Board.ts`），工具函式 kebab-case（`bag-rng.ts`）；對應 schema 以 `docs/openapi.yaml` 為準。後端：`src/` 內使用 snake_case 模組，FastAPI 路由搭配 Pydantic 模型。格式化採 Prettier/ESLint（前端）與 Ruff/Black/Mypy（後端，透過 `uv run`）。
 
 ## Testing Guidelines
-Anchor specs to `docs/TESTPLAN.md` and cite the relevant CONTRACT clause per test description. Favor Vitest for logic units, Playwright for canvas/UI flows, and Pytest for API contracts; keep regression artefacts beside new features. Before PRs, rerun `make tests`, `uv run pytest`, and `make gate` to regenerate suites and validate lint/type/coverage.
+所有測試需對應 `docs/TESTPLAN.md`；每檔案冒頭標註 CONTRACT 條款。Pytest 覆蓋後端 API，Vitest/Playwright 覆蓋前端邏輯與 E2E（無前端時可暫留 TODO）。提交前至少跑 `make tests`、`uv run pytest`、`make gate`，並附上覆蓋率輸出或跳過理由。
 
 ## Commit & Pull Request Guidelines
 Adopt Conventional Commits (`feat:`, `fix:`, `chore:`) to keep automation predictable and mention `docs/TASKS.md` IDs or Acceptance checkpoints in bodies. PRs need a concise summary, linked issues, screenshots for UI tweaks, and a checklist of commands run (`make gate`, local test runner). Flag manual edits to generated files in the description so reviewers can re-run tooling.

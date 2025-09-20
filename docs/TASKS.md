@@ -24,8 +24,8 @@ graph TD
 | B | 確立架構（`docs/ARCH.md`），拆分前端/後端模塊與依賴。 | PRD、Handbook §5 | 版本化架構說明 | 架構評審通過；模塊責任清晰 | 模塊邊界模糊；漏掉監控/安全 | 退回 A，修正 PRD/ARCH 後再行 B→K |
 | C | 契約設計（`docs/openapi.yaml`），提供高分榜 API SSOT。 | PRD、ARCH、Handbook §6 | 簽核的 OpenAPI 契約 | JSON Schema 驗證通過；示例請求跑通 | 契約與實作偏離；廢棄欄位 | 回滾至上版契約，通知前端重新生成 |
 | D | 任務圖（本文件），列出 DAG、風險、回滾。 | PRD、ARCH、OpenAPI、Handbook §3 | 更新的 TASKS 表與 Mermaid | 各節點具 inputs/outputs/gates/risks | DAG 遮蔽外部依賴；責任不清 | 回退到先前 TASKS，補充欄位後重審 |
-| E | 生成骨架（`make skeleton` → Claude），置入 `src/`/`api/` 基礎檔。 | OpenAPI、ARCH、prompts/skeleton | 初始程式骨架 + TODO 標註 | Lint/type 檢查可通過；無未授權改動 | 骨架覆蓋手寫程式；越權改檔 | 重置至最近穩定 commit，調整 prompts 後重跑 |
-| F | 測試草案（`make tests` → Gemini），建立 Vitest/Playwright/Pytest。 | OpenAPI、TESTPLAN、TASKS | `tests/` + fixtures 標註契約條款 | 測試可執行；標註 CONTRACT 條款 | 自動生成測試不可靠 | 恢復前一版 tests，改寫 prompt 再生成 |
+| E | 生成骨架（`make skeleton` → Claude），同步補齊 `web/` 前端與 `src/` 後端基礎檔。 | PRD、ARCH、openapi、prompts/skeleton | 初始程式骨架 + TODO 標註 | 產生檔案僅限 web/src；Lint/type 檢查可通過 | 骨架覆蓋手寫程式；越權改檔 | 重置至最近穩定 commit，調整 prompts 後重跑 |
+| F | 測試草案（`make tests` → Gemini），建立 Pytest 並為前端預留 Vitest/Playwright 草案。 | OpenAPI、TESTPLAN、TASKS | `tests/` + fixtures 標註 CONTRACT 條款 | 生成的測試可執行或留 TODO；契約標註齊全 | 自動測試與程式結構不匹配 | 恢復前一版 tests，改寫 prompt 或手動補齊 |
 | G | 實作與重構（`make impl` → Claude 或人工）。 | Skeleton、Tests、TASKS Ready 節點 | 變更程式 + 補測試 | 單元/整合測試綠燈；Review 無阻塞 | LLM 誤改契約；覆蓋手動更動 | git revert 本節點提交，更新 DAG 後重跑 |
 | H | 交叉審查（`make review` → Codex / 手動 code review）。 | G 產出、測試結果 | `reports/review_codex.md` + Review 記錄 | 高風險缺陷清零；建議已處理或列入 TODO | 審查流於形式；漏掉性能問題 | 回到 G 重實作/補測試，再觸發審查 |
 | I | 工具閘門（`make gate` → `tools/gate.sh`）。 | 代碼倉庫、`pnpm`/`uv` 指令 | Lint/型別/測試/覆蓋率輸出 | 覆蓋率 ≥80%/70%，lint/type 0 錯 | 閘門耗時、資源不足 | 調整 gate 腳本或拆批執行；失敗即回到 G |

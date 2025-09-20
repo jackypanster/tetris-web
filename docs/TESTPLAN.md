@@ -3,6 +3,8 @@ TESTPLAN.md（測試計劃）
 - CONTRACT 指 `docs/openapi.yaml`；此契約定義高分榜 API 之請求/回應、狀態碼與欄位限制。
 - 遊戲規格遵循 `docs/PRD.md` §2-5，驗收標準對照 `docs/Acceptance.md`。
 
+**備註**：若 `web/` 前端尚未就緒，可先產生測試骨架或 TODO，待實作補齊後再充實內容。
+
 **覆蓋矩陣**：
 
 | 類別 | 目標 | 測試檔 | 框架 | 合格條件 |
