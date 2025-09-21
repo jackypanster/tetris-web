@@ -1,9 +1,19 @@
 # Backend Review
 
-## 缺陷與建議
-- ❗ **Python 3.8 無法啟動服務**：`src/main.py:32` 將 `/healthz` 的回傳型別標註為 `dict[str, str]`。專案仍支援 Python ≥3.8（`pyproject.toml`），在 3.8 上匯入模組時會立刻拋出 `TypeError: 'type' object is not subscriptable`，FastAPI 完全無法啟動。建議改用 `typing.Dict[str, str]`，或在檔案頂端加入 `from __future__ import annotations` 以維持 3.8 相容性。 [IGNORED 2025-09-21: 後端政策改為僅支援 Python 3.9.x，已更新 pyproject 與文檔說明]
-- ❗ **Rate-Limit 標頭違反契約**：`src/routers/scores.py:30-33` 將 `X-RateLimit-Reset` 設成 `int(retry_after) + 60` 的相對秒數；然而 `docs/openapi.yaml:52-61` 明確要求回傳「Unix epoch 秒數」。目前客戶端會收到類似 `60`、`70` 的值，無法對齊規格而無法判定重試時間。建議改為 `int(time.time() + retry_after)`（必要時在 429 時也同步設定），並持續提供 `Retry-After`。
-- ❗ **/scores/bulk 超量請求回應碼與契約不符**：`src/routers/scores.py:105-123` 移除了對 `len(batch_input.items) > 50` 的 413 防護，現在完全依賴 `ScoreBatchInput`（`src/models.py:86`）的 `max_length=50` 觸發 Pydantic 驗證錯誤而回 422。這與 `docs/openapi.yaml:129-145` 的 413 約定及既有客戶端預期不符，新測試 `tests/api/test_scores.py:211-225` 也鎖定了錯誤行為。建議恢復路由層對超量 payload 主動拋出 `HTTPException(status_code=413, ...)`，並調整測試期望值與錯誤訊息。
+## 缺陷清單
+- **High – `/scores/bulk` 超過 50 筆時回傳 422 而非契約要求的 413** (`src/routers/scores.py:105`, `docs/openapi.yaml:138`) [FIXED 2025-09-21]
+  - 這版刪除了原本手動檢查 `len(batch_input.items) > 50` 並改由 Pydantic 驗證，但 `ScoreBatchInput` 失敗時 FastAPI 會直接回 422。依據 OpenAPI，超量應回 413 並沿用 `ErrorResponse`。現行實作與新測試 `test_submit_scores_bulk_too_many_items` 都期望 422，會讓依據契約處理 413 的前端或自動化流程行為錯誤。
+  - **修復驗證**: 在 `submit_scores_bulk` 端點添加了明確的長度檢查，當超過50項時返回HTTP 413狀態碼；同時更新了相關測試以驗證正確的契約行為。
+- **Medium – `X-RateLimit-Reset` header 格式不符契約** (`src/routers/scores.py:32`, `docs/openapi.yaml:52`)
+  - 契約描述該 header 為「Unix epoch seconds until the window resets」，但目前以 `str(int(retry_after) + 60)` 回傳固定的剩餘秒數。這不但不是 epoch，也無法真實反映下一個視窗的時間點，客戶端會無法據此計算等待時間。
+- **Medium – 新增 `/healthz` 端點未同步更新 OpenAPI** (`src/main.py:31`, `docs/openapi.yaml`)
+  - 服務現在提供健康檢查，但契約仍未列出該路徑，導致自動化工具與使用者無法從官方文件得知其存在，違反「docs/ 為單一真相來源」的專案手冊。
 
-## 待確認風險
-- `tests/api/test_scores.py:143-154` 以 monkeypatch 只覆寫 `rate_limiter.check_rate_limit`，導致在 429 情境下 `X-RateLimit-Remaining` 仍顯示 30（因 `get_remaining_tokens` 無同步 mock）。雖屬測試輔助程式碼，但若要驗證標頭建議一併調整，以免回歸時誤判。
+## 風險
+- 測試治具直接操作 `score_service._repository._scores` 這類私有細節 (`tests/api/test_scores.py:12`)。若未來改成其他 Repository 實作（例如資料庫），測試會失效；建議改成曝露明確的重設掛鉤。
+
+## 修復建議
+- **`/scores/bulk` 契約修正**：在進入 service 前重新檢查 `len(batch_input.items) > 50`，以 413 搭配 `ErrorResponse` 回傳，並修正對應測試期待值。
+- **Rate limit header**：改以 `int(time.time() + retry_after)`（或等效的 UTC epoch 秒數）設定 `X-RateLimit-Reset`，確保與契約一致，也讓 429 時 `Retry-After` 與 reset 互相對應。
+- **文件同步**：將 `/healthz` 路由加入 `docs/openapi.yaml`（路徑、回應結構與標籤），避免實作與契約分岐。
+- **測試隔離**：未必需立即修改，但可考慮在 `ScoreService` 暴露重設方法或提供 fixture hook，讓測試不依賴 `_repository._scores` 內部結構。

@@ -1,7 +1,7 @@
 """In-memory score repository implementation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 from ..models import Score, ScoreInput
@@ -12,7 +12,7 @@ class MemoryScoreRepository(ScoreRepository):
     """Simple in-memory storage for scores."""
 
     def __init__(self) -> None:
-        self._scores: List[Score] = []
+        self._scores: list[Score] = []
 
     async def create_score(self, score_input: ScoreInput) -> Score:
         """Create a new score record."""
@@ -37,7 +37,7 @@ class MemoryScoreRepository(ScoreRepository):
         limit: int = 10,
         cursor: Optional[str] = None,
         since: Optional[datetime] = None
-    ) -> List[Score]:
+    ) -> list[Score]:
         """List scores with optional filtering and pagination."""
         # Filter by since timestamp if provided
         filtered_scores = self._scores
@@ -71,7 +71,7 @@ class MemoryScoreRepository(ScoreRepository):
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-        kept_scores: List[Score] = []
+        kept_scores: list[Score] = []
         for index, score in enumerate(sorted_scores):
             if index < max_records or score.created_at >= cutoff_date:
                 kept_scores.append(score)

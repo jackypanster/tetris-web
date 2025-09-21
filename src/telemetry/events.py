@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +24,14 @@ class TelemetryEvent:
     def __init__(
         self,
         event_type: EventType,
-        properties: Optional[Dict[str, Any]] = None,
+        properties: Optional[dict[str, Any]] = None,
         timestamp: Optional[datetime] = None
     ):
         self.event_type = event_type
         self.properties = properties or {}
         self.timestamp = timestamp or datetime.utcnow()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for serialization."""
         return {
             "event_type": self.event_type.value,
@@ -45,9 +45,9 @@ class TelemetryCollector:
 
     def __init__(self, batch_size: int = 50):
         self.batch_size = batch_size
-        self._events: List[TelemetryEvent] = []
+        self._events: list[TelemetryEvent] = []
 
-    def track(self, event_type: EventType, properties: Optional[Dict[str, Any]] = None) -> None:
+    def track(self, event_type: EventType, properties: Optional[dict[str, Any]] = None) -> None:
         """Track a telemetry event."""
         event = TelemetryEvent(event_type, properties)
         self._events.append(event)
@@ -62,7 +62,7 @@ class TelemetryCollector:
         if len(self._events) >= self.batch_size:
             self.flush()
 
-    def flush(self) -> List[Dict[str, Any]]:
+    def flush(self) -> list[dict[str, Any]]:
         """Flush collected events and return them as dictionaries."""
         if not self._events:
             return []

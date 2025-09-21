@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from ..models import Score, ScoreInput
 
@@ -21,7 +21,7 @@ class ScoreRepository(ABC):
         limit: int = 10,
         cursor: Optional[str] = None,
         since: Optional[datetime] = None
-    ) -> List[Score]:
+    ) -> list[Score]:
         """Retrieve scores with optional filtering and pagination."""
         pass
 

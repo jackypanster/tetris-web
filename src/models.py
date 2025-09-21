@@ -1,7 +1,7 @@
 """Data models for Tetris scores."""
 
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +24,7 @@ class ScoreInput(BaseModel):
     level_reached: Optional[int] = Field(None, ge=0, description="Last level reached during the run", alias="levelReached")
     duration_seconds: Optional[int] = Field(None, ge=0, description="Run duration in seconds", alias="durationSeconds")
     seed: Optional[str] = Field(None, description="Optional seed used by the client")
-    tags: Optional[List[str]] = Field(default_factory=list, min_length=0, max_length=5, description="Optional metadata labels")
+    tags: Optional[list[str]] = Field(default_factory=list, min_length=0, max_length=5, description="Optional metadata labels")
     client: Optional[ClientInfo] = None
 
     class Config:
@@ -44,7 +44,7 @@ class Score(BaseModel):
     created_at: datetime = Field(..., description="Time when the server accepted the score", alias="createdAt")
     suspect: bool = Field(default=False, description="Flag indicating the score is withheld from ranking pending review")
     client: Optional[ClientInfo] = None
-    tags: Optional[List[str]] = Field(default_factory=list, description="Optional metadata labels provided by the client")
+    tags: Optional[list[str]] = Field(default_factory=list, description="Optional metadata labels provided by the client")
 
     class Config:
         allow_population_by_field_name = True
@@ -65,7 +65,7 @@ class ScoreWindow(BaseModel):
     generated_at: datetime = Field(..., description="Timestamp when the snapshot was generated", alias="generatedAt")
     retention: RetentionPolicy
     next_cursor: Optional[str] = Field(None, description="Cursor to request the next page; null when no more data", alias="nextCursor")
-    items: List[Score] = Field(..., description="Ordered list of scores")
+    items: list[Score] = Field(..., description="Ordered list of scores")
 
     class Config:
         allow_population_by_field_name = True
@@ -74,7 +74,7 @@ class ScoreWindow(BaseModel):
 class ScoreBatchInput(BaseModel):
     """Bulk score submission input."""
     client_time: Optional[datetime] = Field(None, description="Timestamp when the batch was generated on the client", alias="clientTime")
-    items: List[ScoreInput] = Field(..., min_length=1, max_length=50, description="Scores queued locally awaiting upload")
+    items: list[ScoreInput] = Field(..., min_length=1, description="Scores queued locally awaiting upload")
 
     class Config:
         allow_population_by_field_name = True
@@ -92,8 +92,8 @@ class ScoreRejection(BaseModel):
 
 class ScoreBatchResult(BaseModel):
     """Bulk submission result."""
-    accepted: List[Score] = Field(..., description="Scores that were stored successfully")
-    rejected: List[ScoreRejection] = Field(..., description="Scores that failed validation or business rules")
+    accepted: list[Score] = Field(..., description="Scores that were stored successfully")
+    rejected: list[ScoreRejection] = Field(..., description="Scores that failed validation or business rules")
 
     class Config:
         extra = "forbid"
@@ -101,7 +101,7 @@ class ScoreBatchResult(BaseModel):
 
 class ValidationError(BaseModel):
     """Validation error details."""
-    loc: List[Union[str, int]] = Field(..., description="Path to the field that caused the error")
+    loc: list[Union[str, int]] = Field(..., description="Path to the field that caused the error")
     msg: str
     type: str
 

@@ -1,7 +1,6 @@
 """Simple token bucket rate limiter implementation."""
 
 import time
-from typing import Dict, Tuple
 
 
 class TokenBucket:
@@ -54,9 +53,9 @@ class RateLimiter:
     def __init__(self, max_tokens: int = 30, refill_rate: float = 0.5):
         self.max_tokens = max_tokens
         self.refill_rate = refill_rate
-        self._buckets: Dict[str, TokenBucket] = {}
+        self._buckets: dict[str, TokenBucket] = {}
 
-    def check_rate_limit(self, client_id: str, tokens: int = 1) -> Tuple[bool, float]:
+    def check_rate_limit(self, client_id: str, tokens: int = 1) -> tuple[bool, float]:
         """Check if client can proceed or should be rate limited.
 
         Returns:

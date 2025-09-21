@@ -1,7 +1,7 @@
 """Score business logic service."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from ..models import Score, ScoreBatchInput, ScoreBatchResult, ScoreInput, ScoreRejection
 from ..repositories.base import ScoreRepository
@@ -19,7 +19,7 @@ class ScoreService:
         limit: int = 10,
         cursor: Optional[str] = None,
         since: Optional[datetime] = None
-    ) -> List[Score]:
+    ) -> list[Score]:
         """Get top scores ordered by points desc, then created_at desc."""
         return await self._repository.get_scores(limit=limit, cursor=cursor, since=since)
 
@@ -48,8 +48,8 @@ class ScoreService:
 
     async def create_scores_bulk(self, batch_input: ScoreBatchInput) -> ScoreBatchResult:
         """Create multiple score entries."""
-        accepted: List[Score] = []
-        rejected: List[ScoreRejection] = []
+        accepted: list[Score] = []
+        rejected: list[ScoreRejection] = []
 
         for score_input in batch_input.items:
             try:

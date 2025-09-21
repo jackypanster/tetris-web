@@ -210,19 +210,19 @@ def test_submit_scores_bulk_with_rejections():
 
 def test_submit_scores_bulk_too_many_items():
     """
-    CONTRACT: openapi.yaml#/paths/~1scores~1bulk/post@422
+    CONTRACT: openapi.yaml#/paths/~1scores~1bulk/post@413
     GIVEN batch input with more than 50 items
     WHEN the POST /scores/bulk endpoint is called
-    THEN it should return 422 Unprocessable Entity (Pydantic validation).
+    THEN it should return 413 Payload Too Large per OpenAPI contract.
     """
     # Create 51 items to exceed the limit
     items = [{"nickname": f"Player{i}", "points": i * 100} for i in range(51)]
     batch_input = {"items": items}
 
     response = client.post("/scores/bulk", json=batch_input)
-    assert response.status_code == 422
+    assert response.status_code == 413
     data = response.json()
-    assert "too_long" in str(data)
+    assert "maximum limit" in data["detail"]
 
 
 def test_healthcheck():

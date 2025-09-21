@@ -112,6 +112,13 @@ async def submit_scores_bulk(batch_input: ScoreBatchInput, request: Request, res
     # Apply rate limiting
     check_rate_limit(request, response)
 
+    # Check for payload size limit before processing (per OpenAPI contract)
+    if len(batch_input.items) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Batch size exceeds maximum limit of 50 items"
+        )
+
     try:
         result = await score_service.create_scores_bulk(batch_input)
         return result
