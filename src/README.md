@@ -4,6 +4,7 @@ FastAPI backend service for score submission and leaderboard management.
 
 ## Quick Start
 
+> Backend runtime is validated on Python 3.9.x only.
 ```bash
 uv sync
 uv run fastapi dev src/main.py --reload
@@ -197,7 +198,7 @@ uv run gunicorn src.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 ### Docker (planned)
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.9-slim
 COPY . /app
 WORKDIR /app
 RUN uv sync --locked

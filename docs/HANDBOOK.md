@@ -31,6 +31,7 @@
 - **Codex CLI**：規劃/審核/生成差異補丁；建議 `--sandbox workspace-write` + `-a on-failure`（或 `--full-auto`）。
 - **Claude Code CLI**：增量實作/重構；建議僅允許 `Edit` 類工具；必要時用 `--print` 只輸出 diff。
 - **Gemini CLI**：文檔/測試生成；建議 `--approval-mode auto_edit` 僅寫入 `docs/`、`tests/`。
+- **Python runtime**：後端僅鎖定並驗證於 Python 3.9.x；其他版本視為未支援狀態。
 - **禁令**：嚴禁非白名單 shell 操作；所有自動改檔限定在既定目錄；所有提示詞、輸出入統一版本化。
 
 ---

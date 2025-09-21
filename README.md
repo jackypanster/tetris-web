@@ -22,6 +22,7 @@ pnpm run dev
 ```
 
 **Backend:**
+> Runtime target: Python 3.9.x (other versions are unsupported)
 ```bash
 uv sync
 uv run fastapi dev src/main.py --reload
