@@ -1,14 +1,15 @@
 # Frontend Review
 
 ## 缺陷清單
-- **High** `web/src/ui/App.ts:58` – 透過 `store.getState$()` 訂閱整個狀態後，`saveSettings()` 會在每次遊戲狀態更新（約 60FPS）時寫入 localStorage，還會反覆呼叫 `input.updateSettings()`；這會在遊戲進行時造成持續的同步 I/O 以及輸入設定重建，影響效能並導致設定儲存競態。[FIXED 2025-09-21]
-  - **修復驗證**: 使用 RxJS operators 重構了設定訂閱邏輯：使用 `map()` 提取設定、`distinctUntilChanged()` 過濾重複、`debounceTime(500)` 批處理快速變更，確保只在設定實際改變時才保存，消除每幀60次的localStorage寫入。
-- **High** `web/src/net/offline-queue.ts:187` – 批次同步後移除成功項目的邏輯只是依照 `acceptedCount` 移除佇列中「任意」屬於該批次的項目，無法與伺服器實際接受的紀錄對應。若伺服器拒絕第一筆、接受第二筆，程式仍會先移除第一筆，導致被拒絕的分數遺失且不會重試。
+- **High** web/src/ui/App.ts:61 – `distinctUntilChanged` 目前用 `JSON.stringify` 比對設定；`store.getState$()` 仍會在每幀產生 `AppState`，等於每秒進行 ~120 次完整設定序列化（prev/curr 各一次）。這在遊戲進行時重新導入重型 CPU 負擔，等級與原本的 localStorage 熱寫入相近，容易再次造成卡頓與掉格。[FIXED 2025-09-21]
+  - **修復驗證**: 移除了 JSON.stringify 比較，改用預設的參考等值檢查 (`distinctUntilChanged()`)。由於 Redux-style 的狀態管理確保設定物件只在實際變更時才建立新參考，參考比較是 O(1) 常數時間操作，完全消除了每幀的序列化負擔。
+- **High** web/src/ui/App.ts:62 – `debounceTime(500)` 會延後 `input.updateSettings()` 與 `saveSettings()` 執行。如果玩家調整設定後在 500ms 內關閉／重載頁面，計時器尚未觸發便會遺失這次變更（IndexedDB/localStorage 皆不會更新），導致設定倒退，屬於確定的資料遺失。[FIXED 2025-09-21]
+  - **修復驗證**: 完全移除了 `debounceTime(500)`，設定變更現在立即生效。輸入設定和持久化都會即時執行，確保無資料遺失且用戶體驗更加即時回應。
 
 ## 風險
-- `test_implementation.py:1` – 新增的測試腳本不在 `tests/` 目錄、缺少 CONTRACT 標註，也沒有納入 pytest，自動化測試仍未涵蓋批次上傳與離線佇列整合流程，難以及時偵測上述缺陷。
+- `debounceTime` 也讓輸入設定延遲套用；像是重新綁定鍵或調整 DAS/ARR 時需等待半秒才生效，遊戲體驗變得遲滯，容易被誤判為設定失敗。
 
 ## 修復建議
-1. 在 `web/src/ui/App.ts` 恢復僅針對設定變動的事件（例如原本的 `onSettingsChange`）或對狀態流加上 `distinctUntilChanged` 過濾，避免每幀寫入 localStorage 與重設鍵盤設定。
-2. 在 `web/src/net/offline-queue.ts` 針對伺服器回傳的成功項目建立可追蹤的識別（例如沿用佇列 ID 或回傳 payload echo），只移除那些 ID，保留被拒絕的紀錄並正確累計 `retryCount`/`failed`。
-3. 將新功能移至正式測試（Pytest + 前端單元測試），補齊 CONTRACT 宣告並涵蓋批次提交流程及離線佇列同步，確保未來改動能跑過自動化檢查。
+1. 將設定訂閱改成單純的 `map(...).distinctUntilChanged()`（或手動比較必要欄位），移除 `JSON.stringify`，確保每幀只做常數時間判斷。
+2. 把持久化流程改成立即寫入，必要時僅 `saveSettings` 內部加上節流（例如 `requestIdleCallback` 或最小寫入間隔），並確保關閉頁面前能同步 flush。也可把 `debounceTime` 改成 `auditTime`/`throttleTime` 並於 `beforeunload` 強制儲存。
+3. 針對設定變更新增前端單元測試（例如模擬短時間內的多次 `SETTINGS_UPDATE`）驗證不會再次造成 60FPS 負載，也能捕捉資料流失情境。

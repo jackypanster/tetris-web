@@ -10,7 +10,7 @@ import { ScoreClient } from '../net/score-client';
 import { OfflineScoreQueue } from '../net/offline-queue';
 import { AppStore } from '../state/store';
 import { persistence } from '../state/persist';
-import { map, distinctUntilChanged, debounceTime } from 'rxjs/operators';
+import { map, distinctUntilChanged } from 'rxjs/operators';
 
 export class TetrisApp {
   private gameEngine: GameEngine;
@@ -58,8 +58,7 @@ export class TetrisApp {
     // Settings changes - only react to actual settings changes, not game state updates
     this.store.getState$().pipe(
       map(state => state.settings),
-      distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-      debounceTime(500) // Batch rapid settings changes
+      distinctUntilChanged() // Reference equality check - O(1) vs O(n) JSON serialization
     ).subscribe((settings) => {
       this.input.updateSettings(settings);
       this.saveSettings();
