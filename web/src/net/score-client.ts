@@ -2,66 +2,15 @@
  * Score submission client with retry logic and rate limiting handling
  */
 
-export interface ScoreInput {
-  nickname: string;
-  points: number;
-  lines?: number;
-  levelReached?: number;
-  durationSeconds?: number;
-  seed?: string;
-  tags?: string[];
-  client?: {
-    version?: string;
-    platform?: string;
-    ua?: string;
-  };
-}
+import type { components } from './types'
 
-export interface Score {
-  id: string;
-  nickname: string;
-  points: number;
-  lines: number;
-  levelReached: number;
-  durationSeconds: number;
-  seed?: string;
-  createdAt: string;
-  suspect: boolean;
-  client?: {
-    version?: string;
-    platform?: string;
-    ua?: string;
-  };
-  tags?: string[];
-}
-
-export interface ScoreWindow {
-  generatedAt: string;
-  retention: {
-    days: number;
-    maxRecords: number;
-  };
-  nextCursor?: string;
-  items: Score[];
-}
-
-export interface ScoreBatchInput {
-  clientTime?: string;
-  items: ScoreInput[];
-}
-
-export interface ScoreBatchResult {
-  accepted: Score[];
-  rejected: Array<{
-    reason: string;
-    payload: ScoreInput;
-  }>;
-}
-
-export interface ApiError {
-  code?: string;
-  detail: string | any;
-}
+export type ScoreInput = components['schemas']['ScoreInput']
+export type Score = components['schemas']['Score']
+export type ScoreWindow = components['schemas']['ScoreWindow']
+export type ScoreBatchInput = components['schemas']['ScoreBatchInput']
+export type ScoreBatchResult = components['schemas']['ScoreBatchResult']
+export type ScoreRejection = components['schemas']['ScoreRejection']
+export type ApiError = components['schemas']['ErrorResponse']
 
 export interface RateLimitInfo {
   limit: number;

@@ -25,7 +25,7 @@ export interface ScoreResult {
 }
 
 // Base line clear scores
-const LINE_CLEAR_SCORES = {
+const LINE_CLEAR_SCORES: Record<1 | 2 | 3 | 4, number> = {
   1: 100,
   2: 300,
   3: 500,
@@ -33,11 +33,11 @@ const LINE_CLEAR_SCORES = {
 };
 
 // T-Spin scores (mini T-spins not implemented yet)
-const TSPIN_SCORES = {
-  0: 400,  // T-spin no lines
-  1: 800,  // T-spin single
-  2: 1200, // T-spin double
-  3: 1600, // T-spin triple
+const TSPIN_SCORES: Record<0 | 1 | 2 | 3, number> = {
+  0: 400,
+  1: 800,
+  2: 1200,
+  3: 1600,
 };
 
 const PERFECT_CLEAR_BONUS = 1800;
@@ -98,10 +98,12 @@ export class TetrisScoring {
 
     // Calculate base score
     if (clearEvent.isTSpin) {
-      pointsAwarded = TSPIN_SCORES[clearEvent.linesCleared] * this.state.level;
+      const tSpinKey = Math.min(clearEvent.linesCleared, 3) as 0 | 1 | 2 | 3;
+      pointsAwarded = TSPIN_SCORES[tSpinKey] * this.state.level;
       description = `T-Spin ${this.getLineClearName(clearEvent.linesCleared)}`;
     } else {
-      pointsAwarded = LINE_CLEAR_SCORES[clearEvent.linesCleared as keyof typeof LINE_CLEAR_SCORES] * this.state.level;
+      const lineKey = Math.min(clearEvent.linesCleared, 4) as 1 | 2 | 3 | 4;
+      pointsAwarded = LINE_CLEAR_SCORES[lineKey] * this.state.level;
       description = this.getLineClearName(clearEvent.linesCleared);
     }
 

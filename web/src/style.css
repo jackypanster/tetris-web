@@ -2,11 +2,9 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -15,31 +13,56 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  min-width: 920px;
   min-height: 100vh;
-}
-
-h1 {
-  font-size: 2.5em;
-  line-height: 1.1;
-  margin-bottom: 1rem;
-  color: #646cff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(36, 36, 36, 0.9), rgba(26, 26, 26, 0.95));
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: 1360px;
+  padding: 2.5rem 3.5rem;
+  box-sizing: border-box;
 }
 
 #tetris-container {
+  display: grid;
+  grid-template-columns: 320px 420px 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "sidebar playfield leaderboard"
+    "sidebar playfield leaderboard";
+  gap: 2rem;
+  align-items: start;
+}
+
+#sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+#playfield {
+  grid-area: playfield;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+#leaderboard {
+  grid-area: leaderboard;
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  background-color: rgba(100, 108, 255, 0.08);
 }
 
 #game-canvas {
@@ -52,32 +75,113 @@ h1 {
 #controls {
   display: flex;
   gap: 1rem;
-  margin: 1rem 0;
 }
 
-#info {
-  max-width: 400px;
-  text-align: left;
-  opacity: 0.8;
-  font-size: 0.9em;
+#controls button {
+  flex: 1 1 auto;
 }
 
-#info p {
-  margin: 0.5rem 0;
-}
-
+#preview-panel,
+#score-panel,
 #status {
-  max-width: 400px;
-  text-align: left;
-  margin-top: 1rem;
   padding: 1rem;
-  background-color: rgba(100, 108, 255, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  background-color: rgba(59, 130, 246, 0.12);
+}
+
+#score-panel {
+  background-color: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+#score-panel h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1em;
+  color: #6ee7b7;
+}
+
+#score-panel p {
+  margin: 0.35rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95em;
+}
+
+#preview-panel h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2em;
+  color: #a5b4fc;
+  text-align: center;
+}
+
+#preview-panel canvas {
+  width: 160px;
+  height: 160px;
+  background: rgba(15, 23, 42, 0.85);
   border-radius: 8px;
-  border: 1px solid rgba(100, 108, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+  margin: 0 auto;
+}
+
+#info-text {
+  font-size: 0.9em;
+  opacity: 0.85;
+  padding: 0.75rem 0;
+}
+
+#info-text p {
+  margin: 0.35rem 0;
 }
 
 #status p {
   margin: 0.5rem 0;
+}
+
+#player-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#player-profile label {
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+#player-profile input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: inherit;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+#leaderboard h2 {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+#leaderboard-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 2rem;
+}
+
+#leaderboard-status {
+  margin-top: 0.75rem;
+  font-size: 0.85em;
+  opacity: 0.8;
 }
 
 button {
@@ -107,12 +211,39 @@ button:disabled {
   cursor: not-allowed;
 }
 
+@media (max-width: 1200px) {
+  body {
+    min-width: 100vw;
+    align-items: flex-start;
+  }
+
+  #tetris-container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "sidebar"
+      "playfield"
+      "leaderboard";
+  }
+
+  #leaderboard {
+    max-width: 100%;
+  }
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
   }
+  body {
+    background: linear-gradient(135deg, rgba(236, 233, 255, 0.8), rgba(210, 244, 255, 0.85));
+  }
   button {
     background-color: #f9f9f9;
+  }
+  #preview-panel,
+  #score-panel,
+  #status {
+    border-color: rgba(82, 82, 255, 0.25);
   }
 }

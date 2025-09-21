@@ -2,17 +2,19 @@
  * Client-side analytics and event tracking
  */
 
-export enum AnalyticsEvent {
-  GAME_STARTED = 'game_started',
-  GAME_OVER = 'game_over',
-  LINE_CLEAR = 'line_clear',
-  HOLD_USED = 'hold_used',
-  SETTING_CHANGED = 'setting_changed',
-  SCORE_SUBMITTED = 'score_submitted',
-  OFFLINE_SCORE_QUEUED = 'offline_score_queued',
-  PAUSE_GAME = 'pause_game',
-  RESUME_GAME = 'resume_game',
-}
+export const AnalyticsEvent = {
+  GAME_STARTED: 'game_started',
+  GAME_OVER: 'game_over',
+  LINE_CLEAR: 'line_clear',
+  HOLD_USED: 'hold_used',
+  SETTING_CHANGED: 'setting_changed',
+  SCORE_SUBMITTED: 'score_submitted',
+  OFFLINE_SCORE_QUEUED: 'offline_score_queued',
+  PAUSE_GAME: 'pause_game',
+  RESUME_GAME: 'resume_game',
+} as const;
+
+export type AnalyticsEvent = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
 
 export interface EventProperties {
   [key: string]: string | number | boolean | undefined;

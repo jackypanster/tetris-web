@@ -2,7 +2,8 @@
  * Offline queue manager for score submissions
  */
 
-import { ScoreInput, ScoreBatchInput, ScoreBatchResult, ScoreClient } from './score-client';
+import type { ScoreInput, ScoreBatchInput } from './score-client';
+import { ScoreClient } from './score-client';
 
 export interface QueuedScore extends ScoreInput {
   id: string;
