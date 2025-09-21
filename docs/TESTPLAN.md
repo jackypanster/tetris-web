@@ -1,24 +1,31 @@
-TESTPLAN.md（測試計劃）
-**契約對應**：
-- CONTRACT 指 `docs/openapi.yaml`；此契約定義高分榜 API 之請求/回應、狀態碼與欄位限制。
-- 遊戲規格遵循 `docs/PRD.md` §2-5，驗收標準對照 `docs/Acceptance.md`。
+# TESTPLAN.md — Tetris Web 版測試計畫（2025-09）
 
-**備註**：若 `web/` 前端尚未就緒，可先產生測試骨架或 TODO，待實作補齊後再充實內容。
+本計畫定義現階段的手動驗證步驟與後續自動化目標。覆蓋面向與產品功能對應關係請參考 `docs/PRD.md`。
 
-**覆蓋矩陣**：
+## 1. 現況摘要
+- **自動化測試**：尚未建立（前端與後端皆為 TODO）。
+- **手動驗證**：每次改版需完成下列表格的檢查項，以避免回歸。
 
-| 類別 | 目標 | 測試檔 | 框架 | 合格條件 |
-|---|---|---|---|---|
-| 旋轉 | SRS 踢牆 | `tests/core/rotate_srs.spec.ts` | Vitest | 所有牆踢用例通過；`CONTRACT: PRD §2` |
-| 隨機 | Bag-7 | `tests/core/rng_bag7.spec.ts` | Vitest | 任意 14 顆內涵蓋兩輪完整七子；`CONTRACT: PRD §5` |
-| 消行 | 單/雙/三/四 | `tests/core/clear_lines.spec.ts` | Vitest | 棋盤與分數一致；`CONTRACT: PRD §2` |
-| 鎖定 | 鎖定延遲 | `tests/core/lock_delay.spec.ts` | Vitest | 延遲視窗內移動/旋轉有效；`CONTRACT: PRD §2` |
-| 分數 | 加成規則 | `tests/core/scoring.spec.ts` | Vitest | 分值計算符合 PRD；`CONTRACT: PRD §2` |
-| E2E | 核心操作序列 | `tests/e2e/play.spec.ts` | Playwright | 30 秒內完成一次 Tetris；`CONTRACT: Acceptance A-001` |
-| API | Scores API | `tests/api/test_scores.py` | Pytest | 覆蓋 200/201/400/429；`CONTRACT: openapi.yaml#/paths/~1scores` |
-| 性能 | 60FPS | `tests/perf/test_render_perf.py` | Playwright + 監測腳本 | P95 < 16ms/frame；`CONTRACT: PRD §4` |
+## 2. 手動驗證清單
+| 編號 | 場景 | 操作 | 預期結果 |
+|------|------|------|-----------|
+| M-01 | 遊戲開局 | 點擊 Start Game，使用方向鍵移動、`Z`/`ArrowUp` 旋轉、`Space` 落下 | 方塊動作立即生效，無異常閃爍或卡死 |
+| M-02 | 下一顆預覽 | 在遊戲進行中觀察左側 Next Piece | 顯示與下一顆實際落下的方塊一致 |
+| M-03 | 計分與等級 | 進行至少 10 行消除 | Stats 面板顯示正確分數、行數、等級；落子速度逐步提升 |
+| M-04 | 排行榜提交 | 遊戲結束 | 新分數進入排行榜；若伺服器正常則即時顯示 |
+| M-05 | 離線佇列 | 關閉後端或離線後再結束遊戲 | 狀態文字顯示「待送 N / 失敗 M」，`localStorage` 生成佇列資料 |
+| M-06 | 重新上線 | 恢復後端並等待 1 分鐘或手動觸發 `navigator.onLine` | 佇列清空並刷新排行榜 |
+| M-07 | API 健康檢查 | 訪問 `/healthz`、`/scores`（GET/POST） | 回傳 JSON；錯誤輸入回傳 400/429 等對應代碼 |
 
-**工具與閾值**：
-- 行覆蓋 ≥ 80%，分支覆蓋 ≥ 70%；前端使用 `pnpm test --coverage`，後端使用 `uv run pytest --cov`。
-- 禁止未使用變數；循環複雜度由 ESLint/ruff 規則強制。
-- 每個測試檔案冒頭需以註解標明所對應的 CONTRACT 條款，便於審查。
+> 建議在 Chrome/Firefox/Safari 三種瀏覽器各跑一次 M-01～M-04，確保輸入與繪製一致。
+
+## 3. 自動化目標（待建立）
+| 類型 | 工具 | 內容 | 備註 |
+|------|------|------|------|
+| 單元測試 | Vitest | `core/game.ts` 旋轉、消行、計分邏輯 | 需 mock `performance.now` 確保可重現 |
+| 單元測試 | Pytest | `/scores` 端點 200/201/207/400 驗證 | 以 FastAPI TestClient 模擬 |
+| 合成測試 | Playwright | 測試 Start → Hard Drop → 提交分數流程 | 用於 CI 冒煙測試 |
+| 型別/Lint | pnpm scripts | `pnpm run type-check`、`pnpm run lint` | 建置前自動執行 |
+
+## 4. 測試資料
+- 基本案例：`nickname = 
