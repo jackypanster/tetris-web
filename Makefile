@@ -12,7 +12,7 @@ plan:
 	@echo "==> Gathering planning context..."
 	cat docs/HANDBOOK.md docs/PRD.md docs/ARCH.md docs/TASKS.md docs/openapi.yaml > reports/plan_input.md
 	@echo "==> Running plan with Codex..."
-	codex --full-auto --cd . \
+	codex exec --full-auto --cd . \
 	      --model gpt-5-codex \
 	      --input-file prompts/plan.md \
 	      --input-file reports/plan_input.md \
@@ -35,24 +35,24 @@ impl: impl-backend impl-frontend
 impl-backend:
 	@echo "==> Backend implementation pass..."
 	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
-	  "僅針對後端（src/ 與 docs/openapi.yaml）：先檢視 reports/review_backend.md 與 make gate-backend 的失敗輸出，逐項修復；再參考 docs/TASKS.md、docs/ARCH.md、docs/PRD.md、docs/openapi.yaml 實作或重構；必要時補 Pytest 測試與相關文檔；若需調整契約請先於 docs/ 目錄新增 ADR"
+	  "僅針對後端（src/ 與 docs/openapi.yaml）：先閱讀 reports/review_backend.md，鎖定其中最嚴重且尚未標註 FIXED 的缺陷；本輪只修復該缺陷，必要時同步補測試與文檔。修復完成後：1) 在原缺陷條目尾端加上 `[FIXED $(shell date +%F)]` 並簡述驗證方式；2) 更新 docs/TASKS.md 對應項為已完成；3) 執行 make gate-backend（或等效 pytest 任務）並保留結果摘要。若需調整契約請先於 docs/ 目錄新增 ADR，再重跑相關 gate。"
 
 impl-frontend:
 	@echo "==> Frontend implementation pass..."
 	claude --permission-mode acceptEdits --allowed-tools "*" --verbose --print \
-	  "僅針對前端（web/）：先檢視 reports/review_frontend.md 與 make gate-frontend 的失敗輸出，逐項修復；再參考 docs/TASKS.md、docs/ARCH.md、docs/PRD.md 補齊 UI/邏輯與對應測試；必要時更新文檔；若需調整契約請先於 docs/ 目錄新增 ADR"
+	  "僅針對前端（web/）：先閱讀 reports/review_frontend.md，鎖定最嚴重且尚未標註 FIXED 的缺陷；本輪只修復該缺陷並補齊必要測試/文檔。修復完成後：1) 在原缺陷條目尾端加上 `[FIXED $(shell date +%F)]` 與驗證摘要；2) 更新 docs/TASKS.md 對應項為已完成；3) 執行 make gate-frontend 或對應前端測試並記錄結果。若需調整契約請先於 docs/ 目錄新增 ADR，再重跑相關 gate。"
 
 review: review-backend review-frontend
 
 review-backend:
 	@echo "==> Backend review with Codex..."
-	codex exec --sandbox workspace-write --cd . \
-	  "僅評估本次後端（src/、docs/openapi.yaml、tests/api/ 等）變更，輸出 reports/review_backend.md（缺陷清單/風險/修復建議）"
+	codex exec --model gpt-5-codex --full-auto --cd . \
+          "僅評估本次後端（src/、docs/openapi.yaml、tests/api/ 等）變更，輸出 reports/review_backend.md（缺陷清單/風險/修復建議）"
 
 review-frontend:
 	@echo "==> Frontend review with Codex..."
-	codex exec --sandbox workspace-write --cd . \
-	  "僅評估本次前端（web/ 與相關測試）變更，輸出 reports/review_frontend.md（缺陷清單/風險/修復建議）"
+	codex exec --model gpt-5-codex --full-auto --cd . \
+          "僅評估本次前端（web/ 與相關測試）變更，輸出 reports/review_frontend.md（缺陷清單/風險/修復建議）"
 
 gate: gate-backend gate-frontend
 
@@ -71,7 +71,7 @@ docs:
 
 accept:
 	@echo "==> Running acceptance evaluation with Codex..."
-	codex exec --sandbox workspace-write --cd . \
+	codex exec --model gpt-5-codex --full-auto --cd . \
 	  "對照 Acceptance.md 生成 reports/acceptance.json（機器可讀：id/status/evidence/fix/severity）"
 
 backend-install:
