@@ -2,10 +2,10 @@
  * Main application orchestrator - coordinates game core and UI layers
  */
 
-import { GameEngine } from '../core/game';
+import { TetrisGame } from '../core/game';
 import { CanvasRenderer } from '../render/canvas_renderer';
-import { HUD } from '../render/hud';
-import { KeyboardInput } from '../input/keyboard';
+import { HudRenderer } from '../render/hud';
+import { KeyboardHandler } from '../input/keyboard';
 import { ScoreClient } from '../net/score-client';
 import { OfflineScoreQueue } from '../net/offline-queue';
 import { AppStore } from '../state/store';
@@ -13,10 +13,10 @@ import { persistence } from '../state/persist';
 import { map, distinctUntilChanged } from 'rxjs/operators';
 
 export class TetrisApp {
-  private gameEngine: GameEngine;
+  private gameEngine: TetrisGame;
   private renderer: CanvasRenderer;
-  private hud: HUD;
-  private input: KeyboardInput;
+  private hud: HudRenderer;
+  private input: KeyboardHandler;
   private scoreClient: ScoreClient;
   private offlineQueue: OfflineScoreQueue;
   private store: AppStore;
@@ -29,10 +29,10 @@ export class TetrisApp {
 
     // Initialize core systems
     this.store = new AppStore();
-    this.gameEngine = new GameEngine();
+    this.gameEngine = new TetrisGame();
     this.renderer = new CanvasRenderer(canvasElement);
-    this.hud = new HUD();
-    this.input = new KeyboardInput();
+    this.hud = new HudRenderer();
+    this.input = new KeyboardHandler();
     this.scoreClient = new ScoreClient();
     this.offlineQueue = new OfflineScoreQueue(this.scoreClient);
 

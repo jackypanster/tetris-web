@@ -13,15 +13,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
   display: flex;
@@ -31,8 +22,10 @@ body {
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 2.5em;
   line-height: 1.1;
+  margin-bottom: 1rem;
+  color: #646cff;
 }
 
 #app {
@@ -42,25 +35,49 @@ h1 {
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #3178c6aa);
+#tetris-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 
-.card {
-  padding: 2em;
+#game-canvas {
+  border: 2px solid #646cff;
+  border-radius: 8px;
+  background-color: #000;
+  image-rendering: pixelated;
 }
 
-.read-the-docs {
-  color: #888;
+#controls {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+#info {
+  max-width: 400px;
+  text-align: left;
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+#info p {
+  margin: 0.5rem 0;
+}
+
+#status {
+  max-width: 400px;
+  text-align: left;
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(100, 108, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(100, 108, 255, 0.3);
+}
+
+#status p {
+  margin: 0.5rem 0;
 }
 
 button {
@@ -71,24 +88,29 @@ button {
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
+  color: inherit;
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
   }
   button {
     background-color: #f9f9f9;
