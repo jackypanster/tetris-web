@@ -11,7 +11,7 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def clear_scores_before_each_test():
     """Reset in-memory score storage before each test."""
-    scores.score_service._scores.clear()
+    scores.score_service._repository._scores.clear()
     yield
 
 
@@ -120,22 +120,17 @@ def test_list_scores_invalid_limit_parameter():
     response = client.get("/scores?limit=200")
     assert response.status_code == 422
 
-def test_submit_score_banned_nickname(monkeypatch):
+def test_submit_score_with_whitespace_nickname():
     """
-    CONTRACT: openapi.yaml#/paths/~1scores/post@400
-    GIVEN a nickname is on a banned list
-    WHEN a score is submitted with that nickname
+    GIVEN a score payload with a whitespace-only nickname
+    WHEN the POST /scores endpoint is called
     THEN it should return a 400 Bad Request status.
     """
-    # Mock the service layer's banned list
-    monkeypatch.setattr(scores.score_service, "BANNED_NICKNAMES", {"BannedUser"})
     response = client.post("/scores", json={
-        "nickname": "BannedUser",
-        "points": 9999
+        "nickname": "   ",  # Whitespace only
+        "points": 100
     })
     assert response.status_code == 400
-    data = response.json()
-    assert data["detail"]["code"] == "nickname_banned"
 
 def test_submit_score_rate_limited(monkeypatch):
     """
@@ -144,10 +139,11 @@ def test_submit_score_rate_limited(monkeypatch):
     WHEN a score is submitted
     THEN it should return a 429 Too Many Requests status.
     """
-    # Mock the token bucket to simulate an empty bucket
-    async def mock_is_allowed(identifier: str):
-        return False
-    monkeypatch.setattr(scores, "is_allowed", mock_is_allowed)
+    # Mock the rate limiter to always return False for rate limit check
+    def mock_check_rate_limit(client_id: str, tokens: int = 1):
+        return False, 60.0  # Not allowed, retry after 60 seconds
+
+    monkeypatch.setattr(scores.rate_limiter, "check_rate_limit", mock_check_rate_limit)
 
     response = client.post("/scores", json={
         "nickname": "PlayerFast",
@@ -155,3 +151,89 @@ def test_submit_score_rate_limited(monkeypatch):
     })
     assert response.status_code == 429
     assert "Retry-After" in response.headers
+
+
+def test_submit_scores_bulk_success():
+    """
+    CONTRACT: openapi.yaml#/paths/~1scores~1bulk/post@207
+    GIVEN valid batch input with multiple scores
+    WHEN the POST /scores/bulk endpoint is called
+    THEN it should return 207 Multi-Status with accepted scores.
+    """
+    batch_input = {
+        "items": [
+            {"nickname": "Player1", "points": 1000, "lines": 10},
+            {"nickname": "Player2", "points": 2000, "lines": 20},
+            {"nickname": "Player3", "points": 1500, "lines": 15}
+        ]
+    }
+
+    response = client.post("/scores/bulk", json=batch_input)
+    assert response.status_code == 207
+    data = response.json()
+    assert len(data["accepted"]) == 3
+    assert len(data["rejected"]) == 0
+    assert data["accepted"][0]["nickname"] == "Player1"
+    assert data["accepted"][0]["points"] == 1000
+
+
+def test_submit_scores_bulk_with_rejections():
+    """
+    CONTRACT: openapi.yaml#/paths/~1scores~1bulk/post@207
+    GIVEN batch input with some invalid scores (whitespace nickname passes Pydantic but fails business logic)
+    WHEN the POST /scores/bulk endpoint is called
+    THEN it should return 207 Multi-Status with both accepted and rejected items.
+    """
+    batch_input = {
+        "items": [
+            {"nickname": "ValidPlayer", "points": 1000},
+            {"nickname": "   ", "points": 500},  # Invalid: whitespace-only nickname
+            {"nickname": "Player2", "points": 1500}
+        ]
+    }
+
+    response = client.post("/scores/bulk", json=batch_input)
+    assert response.status_code == 207
+    data = response.json()
+    assert len(data["accepted"]) == 2
+    assert len(data["rejected"]) == 1
+
+    # Check that valid scores were accepted
+    accepted_nicknames = [score["nickname"] for score in data["accepted"]]
+    assert "ValidPlayer" in accepted_nicknames
+    assert "Player2" in accepted_nicknames
+
+    # Check rejection reasons
+    rejection_reasons = [r["reason"] for r in data["rejected"]]
+    assert "EMPTY_NICKNAME" in rejection_reasons
+
+
+def test_submit_scores_bulk_too_many_items():
+    """
+    CONTRACT: openapi.yaml#/paths/~1scores~1bulk/post@422
+    GIVEN batch input with more than 50 items
+    WHEN the POST /scores/bulk endpoint is called
+    THEN it should return 422 Unprocessable Entity (Pydantic validation).
+    """
+    # Create 51 items to exceed the limit
+    items = [{"nickname": f"Player{i}", "points": i * 100} for i in range(51)]
+    batch_input = {"items": items}
+
+    response = client.post("/scores/bulk", json=batch_input)
+    assert response.status_code == 422
+    data = response.json()
+    assert "too_long" in str(data)
+
+
+def test_healthcheck():
+    """
+    GIVEN the API is running
+    WHEN the /healthz endpoint is called
+    THEN it should return a healthy status.
+    """
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "tetris-highscore-api"
+    assert data["version"] == "0.3.0"

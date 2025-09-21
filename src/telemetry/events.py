@@ -47,7 +47,7 @@ class TelemetryCollector:
         self.batch_size = batch_size
         self._events: List[TelemetryEvent] = []
 
-    def track(self, event_type: EventType, properties: Optional[Dict[str, Any]] = None):
+    def track(self, event_type: EventType, properties: Optional[Dict[str, Any]] = None) -> None:
         """Track a telemetry event."""
         event = TelemetryEvent(event_type, properties)
         self._events.append(event)

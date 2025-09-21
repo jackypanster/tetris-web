@@ -24,7 +24,7 @@ class ScoreInput(BaseModel):
     level_reached: Optional[int] = Field(None, ge=0, description="Last level reached during the run", alias="levelReached")
     duration_seconds: Optional[int] = Field(None, ge=0, description="Run duration in seconds", alias="durationSeconds")
     seed: Optional[str] = Field(None, description="Optional seed used by the client")
-    tags: Optional[List[str]] = Field(default_factory=list, min_items=0, max_items=5, description="Optional metadata labels")
+    tags: Optional[List[str]] = Field(default_factory=list, min_length=0, max_length=5, description="Optional metadata labels")
     client: Optional[ClientInfo] = None
 
     class Config:
@@ -74,7 +74,7 @@ class ScoreWindow(BaseModel):
 class ScoreBatchInput(BaseModel):
     """Bulk score submission input."""
     client_time: Optional[datetime] = Field(None, description="Timestamp when the batch was generated on the client", alias="clientTime")
-    items: List[ScoreInput] = Field(..., min_items=1, max_items=50, description="Scores queued locally awaiting upload")
+    items: List[ScoreInput] = Field(..., min_length=1, max_length=50, description="Scores queued locally awaiting upload")
 
     class Config:
         allow_population_by_field_name = True

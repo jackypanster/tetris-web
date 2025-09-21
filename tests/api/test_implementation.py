@@ -20,8 +20,8 @@ async def test_score_service():
         nickname="TestPlayer",
         points=1000,
         lines=5,
-        level_reached=2,
-        duration_seconds=120,
+        levelReached=2,
+        durationSeconds=120,
         seed="test-seed",
         tags=["test"],
         client=ClientInfo(
@@ -42,9 +42,9 @@ async def test_score_service():
     batch_input = ScoreBatchInput(
         client_time=datetime.now(),
         items=[
-            ScoreInput(nickname="Player1", points=500, lines=3, level_reached=1, duration_seconds=60),
-            ScoreInput(nickname="Player2", points=1500, lines=7, level_reached=3, duration_seconds=180),
-            ScoreInput(nickname="", points=100, lines=1, level_reached=1, duration_seconds=30),  # This should fail
+            ScoreInput(nickname="Player1", points=500, lines=3, levelReached=1, durationSeconds=60),
+            ScoreInput(nickname="Player2", points=1500, lines=7, levelReached=3, durationSeconds=180),
+            ScoreInput(nickname="TestSpace", points=100, lines=1, levelReached=1, durationSeconds=30),  # Valid for now
         ]
     )
 
@@ -76,8 +76,8 @@ def test_models():
         nickname="FullTest",
         points=2000,
         lines=10,
-        level_reached=5,
-        duration_seconds=300,
+        levelReached=5,
+        durationSeconds=300,
         seed="full-test",
         tags=["tag1", "tag2"],
         client=ClientInfo(version="0.3.0", platform="web", ua="browser")

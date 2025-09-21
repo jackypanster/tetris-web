@@ -19,7 +19,7 @@ class TokenBucket:
         self.tokens = float(max_tokens)
         self.last_refill = time.time()
 
-    def _refill(self):
+    def _refill(self) -> None:
         """Refill tokens based on time elapsed."""
         now = time.time()
         elapsed = now - self.last_refill
